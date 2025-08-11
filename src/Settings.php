@@ -31,6 +31,13 @@ class Settings implements SettingsInterface
     private FieldFactory $fieldFactory;
 
     /**
+     * The AssetManager instance.
+     *
+     * @var AssetManager
+     */
+    private AssetManager $assetManager;
+
+    /**
      * A cached copy of the settings options array from the database.
      *
      * @var array<string, mixed>|null
@@ -56,6 +63,7 @@ class Settings implements SettingsInterface
         }
 
         $this->fieldFactory = new FieldFactory();
+        $this->assetManager = new AssetManager();
 
         $finalPageTitle = $pageTitle ?? __('Settings', 'default');
         $finalMenuTitle = $menuTitle ?? $finalPageTitle;
@@ -154,6 +162,9 @@ class Settings implements SettingsInterface
      */
     public function init(): void
     {
+        $this->assetManager->setConfig($this->config);
+        $this->assetManager->init();
+
         add_action('admin_menu', [$this, 'registerPage']);
         add_action('admin_init', [$this, 'registerSettings']);
     }

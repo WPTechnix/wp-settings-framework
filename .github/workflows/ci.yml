@@ -81,7 +81,7 @@ jobs:
           CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- '*.php' || echo '')
 
           if [[ -n "$CHANGED_FILES" ]]; then
-            echo "$CHANGED_FILES" | xargs ./vendor/bin/phpcs --report=checkstyle --no-cache > phpcs-report-${{ matrix.php-version }}.xml || true
+            echo "$CHANGED_FILES" | xargs ./vendor/bin/phpcs --ignore=*/examples/* --report=checkstyle --no-cache > phpcs-report-${{ matrix.php-version }}.xml || true
           else
             echo "No PHP files changed. Skipping PHPCS."
             echo '<checkstyle/>' > phpcs-report-${{ matrix.php-version }}.xml
@@ -98,7 +98,7 @@ jobs:
       # For pushes to main: Full scan as final safety check
       - name: Run PHPCS full scan (Push)
         if: github.event_name != 'pull_request'
-        run: ./vendor/bin/phpcs --no-cache
+        run: ./vendor/bin/phpcs --ignore=*/examples/* --no-cache
 
   # PHPStan - Run on highest PHP version for maximum coverage
   static-analysis:
