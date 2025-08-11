@@ -1,13 +1,13 @@
 {
     "name": "wptechnix/wp-settings-framework",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "description": "A modern, fluent, and object-oriented framework for creating powerful WordPress admin settings pages.",
     "type": "library",
     "license": "MIT",
     "keywords": [
-      "wordpress",
-      "settings",
-      "options"
+        "wordpress",
+        "settings",
+        "options"
     ],
     "authors": [
         {
