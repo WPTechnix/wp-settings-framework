@@ -89,6 +89,11 @@ abstract class AbstractField implements FieldInterface
             return $this->config['default'];
         }
 
+        // Fallback for fields that might be arrays.
+        if (in_array(static::class, [MultiSelectField::class], true)) {
+            return [];
+        }
+
         return '';
     }
 }
