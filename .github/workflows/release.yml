@@ -1,0 +1,48 @@
+# .github/workflows/release.yml
+name: Release
+
+on:
+  workflow_dispatch: # Allows manual triggering of the workflow
+  # push:
+  #   branches:
+  #     - main
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # To push commits and tags
+      issues: write # To comment on issues and PRs
+      pull-requests: write # To create releases
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # We need to fetch all history and tags for release-it to work correctly
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Or your preferred Node.js version
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Check for uncommitted changes
+        run: |
+          echo "Running git status to check for modified files..."
+          git status
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create Release
+        run: npm run release -- --ci
+        env:
+          # The GITHUB_TOKEN is automatically provided by GitHub Actions
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
