@@ -29,6 +29,25 @@ final class FieldFactory
     {
         $this->fieldMap = [
             'text'        => Fields\TextField::class,
+            'email'       => Fields\EmailField::class,
+            'number'      => Fields\NumberField::class,
+            'password'    => Fields\PasswordField::class,
+            'url'         => Fields\UrlField::class,
+            'checkbox'    => Fields\CheckboxField::class,
+            'toggle'      => Fields\ToggleField::class,
+            'select'      => Fields\SelectField::class,
+            'multiselect' => Fields\MultiSelectField::class,
+            'radio'       => Fields\RadioField::class,
+            'buttongroup' => Fields\ButtonGroupField::class,
+            'textarea'    => Fields\TextareaField::class,
+            'code'        => Fields\CodeField::class,
+            'color'       => Fields\ColorField::class,
+            'date'        => Fields\DateField::class,
+            'datetime'    => Fields\DateTimeField::class,
+            'time'        => Fields\TimeField::class,
+            'range'       => Fields\RangeField::class,
+            'media'       => Fields\MediaField::class,
+            'description' => Fields\DescriptionField::class,
         ];
     }
 
