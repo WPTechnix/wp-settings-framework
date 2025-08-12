@@ -14,24 +14,24 @@ final class MultiSelectField extends AbstractField
      */
     public function render(mixed $value, array $attributes): void
     {
-        $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
+        $htmlPrefix        = $this->config->get('htmlPrefix', 'wptechnix-settings');
         $defaultAttributes = ['multiple' => 'multiple', 'class' => "{$htmlPrefix}-select2-field"];
-        $mergedAttributes = array_merge($defaultAttributes, $attributes);
-        $selectedValues = is_array($value) ? array_map('strval', $value) : [];
+        $mergedAttributes  = array_merge($defaultAttributes, $attributes);
+        $selectedValues    = is_array($value) ? array_map('strval', $value) : [];
 
         printf(
             '<select id="%s" name="%s[]" %s>',
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
             $this->buildAttributesString($mergedAttributes)
         );
 
-        $options = $this->config['options'] ?? [];
+        $options = $this->config->get('options', []);
         foreach ($options as $optionValue => $optionLabel) {
-            $selected = in_array((string) $optionValue, $selectedValues, true) ? 'selected="selected"' : '';
+            $selected = in_array((string)$optionValue, $selectedValues, true) ? 'selected="selected"' : '';
             printf(
                 '<option value="%s" %s>%s</option>',
-                esc_attr((string) $optionValue),
+                esc_attr((string)$optionValue),
                 $selected,
                 esc_html($optionLabel)
             );
@@ -46,16 +46,17 @@ final class MultiSelectField extends AbstractField
      */
     public function sanitize(mixed $value): array
     {
-        if (!is_array($value)) {
+        if (! is_array($value)) {
             return [];
         }
-        $allowedValues = array_keys($this->config['options'] ?? []);
-        $sanitized = [];
+        $allowedValues = array_keys($this->config->get('options', []));
+        $sanitized     = [];
         foreach ($value as $item) {
-            if (in_array((string) $item, $allowedValues, true)) {
-                $sanitized[] = (string) $item;
+            if (in_array((string)$item, $allowedValues, true)) {
+                $sanitized[] = (string)$item;
             }
         }
+
         return $sanitized;
     }
 
@@ -66,6 +67,6 @@ final class MultiSelectField extends AbstractField
      */
     public function getDefaultValue(): array
     {
-        return $this->config['default'] ?? [];
+        return $this->config->get('default', []);
     }
 }

@@ -15,12 +15,12 @@ final class NumberField extends AbstractField
     public function render(mixed $value, array $attributes): void
     {
         $defaultAttributes = ['class' => 'regular-text'];
-        $mergedAttributes = array_merge($defaultAttributes, $attributes);
+        $mergedAttributes  = array_merge($defaultAttributes, $attributes);
         printf(
             '<input type="number" id="%s" name="%s" value="%s" %s />',
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
-            esc_attr((string) $value),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
+            esc_attr((string)$value),
             $this->buildAttributesString($mergedAttributes)
         );
     }
@@ -30,11 +30,12 @@ final class NumberField extends AbstractField
      */
     public function sanitize(mixed $value): int|float
     {
-        if (!is_numeric($value)) {
+        if (! is_numeric($value)) {
             return 0;
         }
         $numericValue = $value + 0; // Cast to number
-        return is_float($numericValue) ? (float) $value : (int) $value;
+
+        return is_float($numericValue) ? (float)$value : (int)$value;
     }
 
     /**
@@ -42,6 +43,6 @@ final class NumberField extends AbstractField
      */
     public function getDefaultValue(): int
     {
-        return (int) ($this->config['default'] ?? 0);
+        return (int)($this->config->get('default', 0));
     }
 }

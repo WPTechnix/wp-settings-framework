@@ -5,89 +5,118 @@ declare(strict_types=1);
 namespace WPTechnix\WPSettings\Interfaces;
 
 /**
- * Defines the contract for a settings page builder.
+ * Defines the public contract for a settings page builder.
  */
 interface SettingsInterface
 {
     /**
-     * Set Settings Page Capability
-     */
-    public function setCapability(string $capability): static;
-
-    /**
-     * Set Parent Menu slug.
-     */
-    public function setParentSlug(string $parentSlug): static;
-
-    /**
-     * Sets or overrides the main page title.
+     * Sets the main title of the settings page (the `<h1>` tag).
      *
-     * @param string $pageTitle The new title for the settings page.
-     * @return static
+     * @param string $pageTitle The main title for the settings page.
+     *
+     * @return static Provides a fluent interface.
      */
     public function setPageTitle(string $pageTitle): static;
 
     /**
-     * Sets or overrides the menu title.
+     * Sets the title displayed in the WordPress admin menu.
      *
-     * @param string $menuTitle The new title for the admin menu item.
-     * @return static
+     * @param string $menuTitle The title for the admin menu item.
+     *
+     * @return static Provides a fluent interface.
      */
     public function setMenuTitle(string $menuTitle): static;
 
     /**
-     * Adds a tab for organizing settings sections.
+     * Sets the required capability to view and save the settings page.
      *
-     * @param string $id    The unique identifier for the tab.
-     * @param string $title The text to display on the tab.
-     * @param string $icon  Optional. A Dashicon class to display next to the title.
-     * @return static
+     * @param string $capability The WordPress capability string (e.g., 'manage_options').
+     *
+     * @return static Provides a fluent interface.
+     */
+    public function setCapability(string $capability): static;
+
+    /**
+     * Sets the parent menu page slug under which this settings page will appear.
+     *
+     * @param string $parentSlug The slug of the parent menu (e.g., 'options-general.php', 'themes.php').
+     *
+     * @return static Provides a fluent interface.
+     */
+    public function setParentSlug(string $parentSlug): static;
+
+    /**
+     * Adds a navigation tab to the settings page.
+     * This automatically enables the tabbed interface.
+     *
+     * @param string $id A unique identifier for the tab.
+     * @param string $title The visible title of the tab.
+     * @param string $icon (Optional) A Dashicons class for an icon (e.g., 'dashicons-admin-generic').
+     *
+     * @return static Provides a fluent interface.
      */
     public function addTab(string $id, string $title, string $icon = ''): static;
 
     /**
-     * Adds a settings section to the page.
+     * Adds a settings section to group related fields.
      *
-     * @param string $id          The unique identifier for the section.
-     * @param string $title       The title displayed for the section.
-     * @param string $description Optional. A description displayed below the section title.
-     * @param string $tabId       Optional. The ID of the tab this section should appear under.
-     * @return static
+     * @param string $id A unique identifier for the section.
+     * @param string $title The visible title of the section (an `<h2>` tag).
+     * @param string $description (Optional) A short description displayed below the section title.
+     * @param string $tabId (Optional) The ID of the tab this section belongs to. Required for tabbed interfaces.
+     *
+     * @return static Provides a fluent interface.
      */
     public function addSection(string $id, string $title, string $description = '', string $tabId = ''): static;
 
     /**
-     * Adds a field to a section.
+     * Adds a setting field to a section.
      *
-     * @param string               $id        The unique identifier for the field.
-     * @param string               $sectionId The ID of the section this field belongs to.
-     * @param string               $type      The field type (e.g., 'text', 'toggle', 'code').
-     * @param string               $label     The label displayed for the field.
-     * @param array<string, mixed> $args      Optional. An array of additional arguments.
-     * @return static
+     * @param string $id A unique identifier for the field, used as the key in the options array.
+     * @param string $sectionId The ID of the section this field belongs to.
+     * @param string $type The type of field (e.g., 'text', 'toggle', 'select').
+     * @param string $label The label displayed for the field.
+     * @param array<string, mixed> $args (Optional) Additional arguments for the field, such as 'default',
+     *                                   'description', 'options', 'attributes', etc.
+     *
+     * @return static Provides a fluent interface.
      */
-    public function addField(string $id, string $sectionId, string $type, string $label, array $args = []): static;
+    public function addField(
+        string $id,
+        string $sectionId,
+        string $type,
+        string $label,
+        array $args = []
+    ): static;
 
     /**
-     * Initializes the settings page and hooks all components into WordPress.
+     * Hooks the settings framework into the appropriate WordPress actions.
+     * This method must be called to activate the settings page and make it appear.
      *
-     * This method must be called after all configuration is complete.
+     * @return void
      */
     public function init(): void;
 
     /**
-     * Gets the WordPress option name where settings are stored.
+     * Gets a saved option value from the database.
      *
-     * @return string The option name.
-     */
-    public function getOptionName(): string;
-
-    /**
-     * Retrieves a setting's value for this settings page.
+     * This is the primary method for retrieving a field's current value for rendering.
+     * It intelligently falls back to the field's configured 'default' value if no
+     * saved value exists in the database.
      *
-     * @param string $key     The unique key of the setting to retrieve.
-     * @param mixed  $default A fallback value to return if the setting is not found.
-     * @return mixed The stored setting value, or the default if not found.
+     * @param string $key The specific option key (field ID) to retrieve.
+     * @param mixed|null $default A final fallback value if no saved option or field default is found.
+     *
+     * @return mixed The saved value, the field's default value, or the provided default.
      */
     public function get(string $key, mixed $default = null): mixed;
+
+    /**
+     * Gets the main option name used in the database.
+     *
+     * This is the top-level key for the array stored in the `wp_options` table.
+     *
+     * @return string The name of the option array.
+     */
+    public function getOptionName(): string;
 }

@@ -23,9 +23,9 @@ final class UrlField extends AbstractField
 
         printf(
             '<input type="url" id="%s" name="%s" value="%s" %s />',
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
-            esc_attr((string) $value),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
+            esc_attr((string)$value),
             $this->buildAttributesString($mergedAttributes)
         );
     }
@@ -35,6 +35,6 @@ final class UrlField extends AbstractField
      */
     public function sanitize(mixed $value): string
     {
-        return esc_url_raw((string) $value);
+        return esc_url_raw((string)$value);
     }
 }

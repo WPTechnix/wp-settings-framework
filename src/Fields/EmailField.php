@@ -20,9 +20,9 @@ final class EmailField extends AbstractField
 
         printf(
             '<input type="email" id="%s" name="%s" value="%s" %s />',
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
-            esc_attr((string) $value),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
+            esc_attr((string)$value),
             $this->buildAttributesString($mergedAttributes)
         );
     }
@@ -32,6 +32,6 @@ final class EmailField extends AbstractField
      */
     public function sanitize(mixed $value): string
     {
-        return sanitize_email((string) $value);
+        return sanitize_email((string)$value);
     }
 }

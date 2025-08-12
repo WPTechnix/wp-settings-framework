@@ -1,47 +1,55 @@
 # WPTechnix Settings Framework
 
-A modern, object-oriented PHP framework for creating powerful and professional settings pages in WordPress. Designed with a clean, fluent API, this framework saves you time by abstracting away the complexities of the WordPress Settings API.
+A modern, object-oriented PHP framework for creating powerful and professional settings pages in WordPress. Designed
+with a clean, fluent API, this framework saves you time by abstracting away the complexities of the WordPress Settings
+API.
 
-Build complex, tabbed settings pages with over 20 field types, conditional logic, and an enhanced user interface, all while storing your data efficiently in a single database option.
+Build complex, tabbed settings pages with over 20 field types, conditional logic, and an enhanced user interface, all
+while storing your data efficiently in a single database option.
 
 ---
 
 ## Features
 
-*   **Fluent, Chainable API:** Build your entire settings page in a clean, readable, and intuitive way.
-*   **Efficient Database Storage:** All settings are saved to a single array in the `wp_options` table, reducing database clutter and improving performance.
-*   **Rich & Modern Field Types:** Includes over 20 field types, with enhanced UI for color pickers, media uploaders, date/time selectors, and more.
-*   **Tabbed Interface:** Easily organize your settings into clean, separate tabs with support for Dashicons.
-*   **Conditional Field Logic:** Show or hide fields based on the value of another field (e.g., show "Log File Path" only when "Enable Debugging" is toggled on).
-*   **Code Editor Fields:** Includes a `code` field with syntax highlighting for CSS, JavaScript, and HTML, powered by the built-in WordPress CodeMirror library.
-*   **Conflict-Free Prefixing:** All custom HTML classes for CSS and JS are prefixed to prevent conflicts with other plugins and themes. This prefix is fully configurable.
-*   **Composer Ready:** Fully PSR-4 compliant and ready to be included as a dependency in any modern WordPress project.
+* **Fluent, Chainable API:** Build your entire settings page in a clean, readable, and intuitive way.
+* **Efficient Database Storage:** All settings are saved to a single array in the `wp_options` table, reducing database
+  clutter and improving performance.
+* **Rich & Modern Field Types:** Includes over 20 field types, with enhanced UI for color pickers, media uploaders,
+  date/time selectors, and more.
+* **Tabbed Interface:** Easily organize your settings into clean, separate tabs with support for Dashicons.
+* **Conditional Field Logic:** Show or hide fields based on the value of another field (e.g., show "Log File Path" only
+  when "Enable Debugging" is toggled on).
+* **Code Editor Fields:** Includes a `code` field with syntax highlighting for CSS, JavaScript, and HTML, powered by the
+  built-in WordPress CodeMirror library.
+* **Conflict-Free Prefixing:** All custom HTML classes for CSS and JS are prefixed to prevent conflicts with other
+  plugins and themes. This prefix is fully configurable.
+* **Composer Ready:** Fully PSR-4 compliant and ready to be included as a dependency in any modern WordPress project.
 
 ## Available Field Types
 
 The framework includes the following field types out of the box:
 
-| Type | Description |
-| :--- | :--- |
-| `text` | A standard single-line text input. |
-| `email` | A text input with `type="email"` validation. |
-| `password` | A text input with `type="password"`. |
-| `number` | A number input with `type="number"`. |
-| `url` | A text input with `type="url"` validation. |
-| `textarea` | A standard multi-line text area. |
-| `checkbox` | A single checkbox. |
-| `toggle` | An on/off toggle switch (saves a boolean). |
-| `select` | A dropdown select menu. |
-| `multiselect` | A multi-select dropdown menu. |
-| `radio` | A group of radio buttons. |
-| `buttongroup` | A modern button group that functions like a radio input. |
-| `color` | A color picker field. |
-| `date` | A date picker. |
-| `datetime` | A date and time picker. |
-| `time` | A time picker. |
-| `range` | An enhanced range slider with a value display. |
-| `media` | A media uploader that uses the WordPress Media Library. |
-| `code` | A code editor with syntax highlighting. |
+| Type          | Description                                                   |
+|:--------------|:--------------------------------------------------------------|
+| `text`        | A standard single-line text input.                            |
+| `email`       | A text input with `type="email"` validation.                  |
+| `password`    | A text input with `type="password"`.                          |
+| `number`      | A number input with `type="number"`.                          |
+| `url`         | A text input with `type="url"` validation.                    |
+| `textarea`    | A standard multi-line text area.                              |
+| `checkbox`    | A single checkbox.                                            |
+| `toggle`      | An on/off toggle switch (saves a boolean).                    |
+| `select`      | A dropdown select menu.                                       |
+| `multiselect` | A multi-select dropdown menu.                                 |
+| `radio`       | A group of radio buttons.                                     |
+| `buttongroup` | A modern button group that functions like a radio input.      |
+| `color`       | A color picker field.                                         |
+| `date`        | A date picker.                                                |
+| `datetime`    | A date and time picker.                                       |
+| `time`        | A time picker.                                                |
+| `range`       | An enhanced range slider with a value display.                |
+| `media`       | A media uploader that uses the WordPress Media Library.       |
+| `code`        | A code editor with syntax highlighting.                       |
 | `description` | A read-only field used to display text, lists, or other HTML. |
 
 ## Installation
@@ -49,18 +57,22 @@ The framework includes the following field types out of the box:
 This package is intended to be used as a Composer dependency.
 
 Install the package via the command line:
+
 ```bash
 composer require wptechnix/wp-settings-framework
 ```
+
 Make sure your project's `vendor/autoload.php` file is included to autoload the framework's classes.
 
 ## Getting Started
 
-Creating a settings page is simple. In your plugin's main bootstrap file or a dedicated service class, instantiate the `\WPTechnix\WPSettings\Settings` class and use its fluent methods to build your page.
+Creating a settings page is simple. In your plugin's main bootstrap file or a dedicated service class, instantiate the
+`\WPTechnix\WPSettings\Settings` class and use its fluent methods to build your page.
 
 ### Example Usage
 
-Here is a complete example of how to build a tabbed settings page for a fictional "My Awesome Plugin". This example also demonstrates the correct way to handle translations.
+Here is a complete example of how to build a tabbed settings page for a fictional "My Awesome Plugin". This example also
+demonstrates the correct way to handle translations.
 
 ```php
 <?php
@@ -215,7 +227,8 @@ $settingsManager->addField(
 
 ### Customizing the HTML Prefix
 
-By default, all custom CSS classes are prefixed with `wptechnix-settings-`. You can provide your own prefix in the constructor's options array.
+By default, all custom CSS classes are prefixed with `wptechnix-settings-`. You can provide your own prefix in the
+constructor's options array.
 
 ```php
 $settingsManager = new \WPTechnix\WPSettings\Settings(

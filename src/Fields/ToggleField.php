@@ -14,7 +14,7 @@ final class ToggleField extends AbstractField
      */
     public function render(mixed $value, array $attributes): void
     {
-        $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
+        $htmlPrefix = $this->config->get('htmlPrefix', 'wptechnix-settings');
 
         printf(
             '<label class="%s-toggle">
@@ -22,8 +22,8 @@ final class ToggleField extends AbstractField
 				<span class="%s-toggle-slider"></span>
 			</label>',
             esc_attr($htmlPrefix),
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
             checked($value, true, false),
             $this->buildAttributesString($attributes),
             esc_attr($htmlPrefix)
@@ -43,6 +43,6 @@ final class ToggleField extends AbstractField
      */
     public function getDefaultValue(): bool
     {
-        return (bool) ($this->config['default'] ?? false);
+        return (bool)($this->config->get('default', false));
     }
 }

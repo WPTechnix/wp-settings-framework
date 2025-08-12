@@ -16,8 +16,8 @@ final class DescriptionField extends AbstractField
     {
         // This field only displays its description, which is handled by the renderer.
         // It has no input element.
-        if (!empty($this->config['description'])) {
-            echo '<div>' . wp_kses_post($this->config['description']) . '</div>';
+        if (! empty($this->config->get('description'))) {
+            echo '<div>' . wp_kses_post($this->config->get('description')) . '</div>';
         }
     }
 

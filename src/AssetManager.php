@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace WPTechnix\WPSettings;
 
+use WPTechnix\WPSettings\Interfaces\ConfigInterface;
+
 /**
  * Handles the enqueueing and rendering of all static assets for the settings page.
  *
@@ -34,45 +36,45 @@ final class AssetManager
     /**
      * AssetManager constructor.
      *
-     * @param array $config The complete setting configuration array.
-     * @phpstan-param SettingsConfig $config
+     * @param ConfigInterface $config Settings Config.
      */
-    public function __construct(protected array $config)
-    {
-        $customPackages = $this->config['assetPackages'] ?? [];
+    public function __construct(
+        protected ConfigInterface $config
+    ) {
+        $this->config->deepMerge([
+            'assetPackages' => [
+                'select2'   => [
+                    'handle' => 'select2',
+                    'script' => [
+                        'src'       => 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js',
+                        'deps'      => ['jquery'],
+                        'version'   => '4.0.13',
+                        'in_footer' => true,
+                    ],
+                    'style'  => [
+                        'src'     => 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css',
+                        'deps'    => [],
+                        'version' => '4.0.13',
+                    ],
+                ],
+                'flatpickr' => [
+                    'handle' => 'flatpickr',
+                    'script' => [
+                        'src'       => 'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js',
+                        'deps'      => [],
+                        'version'   => '4.6.13',
+                        'in_footer' => true,
+                    ],
+                    'style'  => [
+                        'src'     => 'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css',
+                        'deps'    => [],
+                        'version' => '4.6.13',
+                    ],
+                ],
+            ]
+        ]);
 
-        $defaultPackages = [
-            'select2' => [
-                'handle' => 'select2',
-                'script' => [
-                    'src' => 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js',
-                    'deps' => ['jquery'],
-                    'version' => '4.0.13',
-                    'in_footer' => true,
-                ],
-                'style'  => [
-                    'src' => 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css',
-                    'deps' => [],
-                    'version' => '4.0.13',
-                ],
-            ],
-            'flatpickr' => [
-                'handle' => 'flatpickr',
-                'script' => [
-                    'src' => 'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js',
-                    'deps' => [],
-                    'version' => '4.6.13',
-                    'in_footer' => true,
-                ],
-                'style'  => [
-                    'src' => 'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css',
-                    'deps' => [],
-                    'version' => '4.6.13',
-                ],
-            ],
-        ];
-
-        $this->libraryPackages = array_replace_recursive($defaultPackages, $customPackages);
+        $this->libraryPackages = $this->config->get('assetPackages');
 
         $this->fieldTypeToPackageMap = [
             'select'      => 'select2',
@@ -99,9 +101,9 @@ final class AssetManager
      */
     public function enqueueAssets(): void
     {
-        $pageSlug = $this->config['pageSlug'] ?? '';
-        $screen = get_current_screen();
-        if (empty($pageSlug) || null === $screen || !str_contains($screen->id, $pageSlug)) {
+        $pageSlug = $this->config->get('pageSlug');
+        $screen   = get_current_screen();
+        if (empty($pageSlug) || null === $screen || ! str_contains($screen->id, $pageSlug)) {
             return;
         }
 
@@ -122,15 +124,18 @@ final class AssetManager
      */
     private function enqueueRequiredLibraries(): void
     {
-        if (empty($this->config['fields'])) {
+        if (! $this->config->has('fields')) {
             return;
         }
 
+        $fields = $this->config->get('fields');
+
         $requiredPackages = [];
-        foreach ($this->config['fields'] as $field) {
+
+        foreach ($fields as $field) {
             $fieldType = $field['type'] ?? '';
             if (isset($this->fieldTypeToPackageMap[$fieldType])) {
-                $packageName = $this->fieldTypeToPackageMap[$fieldType];
+                $packageName                    = $this->fieldTypeToPackageMap[$fieldType];
                 $requiredPackages[$packageName] = true;
             }
         }
@@ -157,13 +162,13 @@ final class AssetManager
     {
         $handle = $package['handle'];
         if (isset($package['style'])) {
-            if (!wp_style_is($handle, 'registered')) {
+            if (! wp_style_is($handle, 'registered')) {
                 wp_register_style($handle, ...array_values($package['style']));
             }
             wp_enqueue_style($handle);
         }
         if (isset($package['script'])) {
-            if (!wp_script_is($handle, 'registered')) {
+            if (! wp_script_is($handle, 'registered')) {
                 wp_register_script($handle, ...array_values($package['script']));
             }
             wp_enqueue_script($handle);
@@ -175,12 +180,16 @@ final class AssetManager
      */
     private function enqueueCodeEditorAssets(): void
     {
-        if (!function_exists('wp_enqueue_code_editor') || empty($this->config['fields'])) {
+        if (! function_exists('wp_enqueue_code_editor') || ! $this->config->has('fields')) {
             return;
         }
+
+        $fields = $this->config->get('fields');
+
         $requiredLanguages = [];
-        foreach ($this->config['fields'] as $field) {
-            if (($field['type'] ?? '') === 'code') {
+
+        foreach ($fields as $field) {
+            if ('code' === ($field['type'] ?? '')) {
                 $requiredLanguages[$field['language'] ?? 'css'] = true;
             }
         }
@@ -206,29 +215,18 @@ final class AssetManager
      */
     private function getInlineScripts(): string
     {
-        $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
+        $htmlPrefix = $this->config->get('htmlPrefix', 'wptechnix-settings');
 
-        $addMediaTitle = esc_js(
-            $this->config['labels']['addMediaTitle'] ??
-            __('Select', 'default')
-        );
-        $selectMediaText = esc_js(
-            $this->config['labels']['selectMediaText'] ??
-            __('Select', 'default')
-        );
-        $removeMediaText = esc_js(
-            $this->config['labels']['removeMediaText'] ??
-                __('Remove', 'default')
-        );
+        $addMediaTitle   = esc_js($this->config->get('labels.addMediaTitle', 'Add media'));
+        $selectMediaText = esc_js($this->config->get('labels.selectMediaText', 'Select'));
+        $removeMediaText = esc_js($this->config->get('labels.removeMediaText', 'Remove'));
 
         // phpcs:disable Generic.Files.LineLength
         return <<<JS
 		jQuery(function($) {
 			// Initialize WordPress color picker
 			if ($.fn.wpColorPicker) {
-				$('.{$htmlPrefix}-color-picker').wpColorPicker({
-					change: function(event, ui) { $(event.target).trigger('change'); }
-				});
+				$('.{$htmlPrefix}-color-picker').wpColorPicker();
 			}
 
 			// Initialize Select2
@@ -370,129 +368,117 @@ JS;
      */
     private function getInlineStyles(): string
     {
-        $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
+        $htmlPrefix = $this->config->get('htmlPrefix');
 
         // phpcs:disable Generic.Files.LineLength
         return <<<CSS
 			nav.nav-tab-wrapper .dashicons {
-                line-height: 1.5;
-                vertical-align: middle;
-                margin-right: 0.3em;
-			}
-			.nav-tab {
+                line-height: 1em !important;
+                font-size: 1.075em !important;
+                width: auto !important;
+                height: auto !important;
+                margin-right: 0.5em !important;
+            }
+
+            .nav-tab {
                 display: flex;
                 align-items: center;
-			}
+            }
 
 			.{$htmlPrefix}-toggle {
-			  position: relative;
-			  display: inline-block;
-			  width: 50px;
-			  height: 24px;
-			  vertical-align: middle;
+				position: relative;
+				display: inline-block;
+				width: 50px;
+				height: 24px;
+				vertical-align: middle;
+			}
+
+			.{$htmlPrefix}-field-container input[readonly] {
+			  background-color: #fff !important;
+			}
+			.{$htmlPrefix}-radio-label {
+			  display: block;
+			  margin-bottom: 8px;
 			}
 
 			.{$htmlPrefix}-toggle input {
-			  opacity: 0;
-			  width: 0;
-			  height: 0;
+				opacity: 0;
+				width: 0;
+				height: 0;
 			}
-
 			.{$htmlPrefix}-toggle-slider {
-			  position: absolute;
-			  cursor: pointer;
-			  top: 0;
-			  left: 0;
-			  right: 0;
-			  bottom: 0;
-			  background-color: #ccc;
-			  transition: .4s;
-			  border-radius: 24px;
+				position: absolute;
+				cursor: pointer;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background-color: #ccc;
+				transition: .4s;
+				border-radius: 24px;
 			}
-
 			.{$htmlPrefix}-toggle-slider:before {
-              position: absolute;
-              content: '';
-              height: 18px;
-              width: 18px;
-              left: 3px;
-              bottom: 3px;
-              background-color: white;
-              transition: .4s;
-              border-radius: 50%;
+				position: absolute;
+				content: '';
+				height: 18px;
+				width: 18px;
+				left: 3px;
+				bottom: 3px;
+				background-color: white;
+				transition: .4s;
+				border-radius: 50%;
 			}
-
 			input:checked + .{$htmlPrefix}-toggle-slider {
-			  background-color: #2271b1;
+				background-color: #2271b1;
 			}
-
 			input:checked + .{$htmlPrefix}-toggle-slider:before {
-			  transform: translateX(26px);
+				transform: translateX(26px);
 			}
-
 			.{$htmlPrefix}-buttongroup-container {
-			  display: inline-flex;
-			  border: 1px solid #ccd0d4;
-			  border-radius: 4px;
-			  overflow: hidden;
+				display: inline-flex;
+				border: 1px solid #ccd0d4;
+				border-radius: 4px;
+				overflow: hidden;
 			}
 			.{$htmlPrefix}-buttongroup-option {
-                 padding: 0 14px;
-                 height: 30px;
-                 line-height: 28px;
-                 background: #f6f7f7;
-                 border: none;
-                 cursor: pointer;
-                 border-right: 1px solid #ccd0d4;
-                 color: #2c3338;
+				padding: 0 14px;
+				height: 30px;
+				line-height: 28px;
+				background: #f6f7f7;
+				border: none;
+				cursor: pointer;
+				border-right: 1px solid #ccd0d4;
+				color: #2c3338;
 			}
-
 			.{$htmlPrefix}-buttongroup-option:last-child {
-			   border-right: none;
+				border-right: none;
 			}
-
 			.{$htmlPrefix}-buttongroup-option.active {
-              background: #2271b1;
-              color: white;
-              box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+				background: #2271b1;
+				color: white;
+				box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 			}
-
-			.{$htmlPrefix}-media-field-container {
-			  display: flex;
-			  align-items: center;
-			  gap: 10px;
-			  flex-wrap: wrap;
+			.{$htmlPrefix}-media-preview {
+			    display: block;
+			    margin-top: 20px;
 			}
-
-			.{$htmlPrefix}-media-preview-image {
+			.{$htmlPrefix}-media-preview img {
 			  max-width: 150px;
-			  height: auto;
-			  margin-top: 10px;
-			  border: 1px solid #ddd;
-			  box-shadow: 0 1px 2px rgba(0,0,0,0.07);
-			}
-			.{$htmlPrefix}-media-preview-file {
-			   margin-top: 10px;
-			}
-
-			.{$htmlPrefix}-media-preview-file .dashicons {
-			  vertical-align: text-bottom;
-			}
+			  max-height: 150px;
+            }
 
 			.{$htmlPrefix}-enhanced-range-container {
-			  display: flex;
-			  align-items: center;
-			  gap: 15px;
-			  max-width: 400px;
+				display: flex;
+				align-items: center;
+				gap: 15px;
+				max-width: 400px;
 			}
-
 			.{$htmlPrefix}-enhanced-range-slider {
-			  flex: 1;
+				flex: 1;
 			}
-
 			.{$htmlPrefix}-range-value-input {
-			  width: 70px;
-			  text-align: center;
+				width: 70px;
+				text-align: center;
 			}
 CSS;
         // phpcs:enable

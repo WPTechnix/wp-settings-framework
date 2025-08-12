@@ -15,12 +15,12 @@ final class PasswordField extends AbstractField
     public function render(mixed $value, array $attributes): void
     {
         $defaultAttributes = ['class' => 'regular-text'];
-        $mergedAttributes = array_merge($defaultAttributes, $attributes);
+        $mergedAttributes  = array_merge($defaultAttributes, $attributes);
         printf(
             '<input type="password" id="%s" name="%s" value="%s" %s />',
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
-            esc_attr((string) $value),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
+            esc_attr((string)$value),
             $this->buildAttributesString($mergedAttributes)
         );
     }
@@ -32,6 +32,6 @@ final class PasswordField extends AbstractField
     {
         // Passwords should not be altered during sanitization beyond
         // basic string conversion.
-        return (string) $value;
+        return (string)$value;
     }
 }
