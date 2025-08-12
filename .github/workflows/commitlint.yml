@@ -3,7 +3,7 @@ name: Lint Commit Messages
 
 on:
   pull_request:
-    types: [opened, edited, synchronize]
+    types: [ opened, edited, synchronize ]
 
 jobs:
   commitlint:

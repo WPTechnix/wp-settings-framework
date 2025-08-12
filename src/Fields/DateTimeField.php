@@ -14,15 +14,15 @@ final class DateTimeField extends AbstractField
      */
     public function render(mixed $value, array $attributes): void
     {
-        $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
+        $htmlPrefix        = $this->config->get('htmlPrefix', 'wptechnix-settings');
         $defaultAttributes = ['class' => "regular-text {$htmlPrefix}-flatpickr-datetime", 'readonly' => 'readonly'];
-        $mergedAttributes = array_merge($defaultAttributes, $attributes);
+        $mergedAttributes  = array_merge($defaultAttributes, $attributes);
 
         printf(
             '<input type="text" id="%s" name="%s" value="%s" %s />',
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
-            esc_attr((string) $value),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
+            esc_attr((string)$value),
             $this->buildAttributesString($mergedAttributes)
         );
     }
@@ -32,6 +32,6 @@ final class DateTimeField extends AbstractField
      */
     public function sanitize(mixed $value): string
     {
-        return sanitize_text_field((string) $value);
+        return sanitize_text_field((string)$value);
     }
 }

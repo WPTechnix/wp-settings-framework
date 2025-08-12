@@ -14,9 +14,9 @@ final class MediaField extends AbstractField
      */
     public function render(mixed $value, array $attributes): void
     {
-        $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
-        $mediaUrl = '';
-        $mediaId = absint($value);
+        $htmlPrefix = $this->config->get('htmlPrefix', 'wptechnix-settings');
+        $mediaUrl   = '';
+        $mediaId    = absint($value);
         if ($mediaId > 0) {
             $mediaUrl = wp_get_attachment_url($mediaId);
         }
@@ -28,35 +28,35 @@ final class MediaField extends AbstractField
 
         printf(
             '<input type="hidden" id="%s" name="%s" value="%s" %s />',
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
-            esc_attr((string) $value),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
+            esc_attr((string)$value),
             $this->buildAttributesString($attributes)
         );
         printf(
             '<button type="button" class="button %s-media-upload-button" data-field="%s">%s</button>',
             esc_attr($htmlPrefix),
-            esc_attr($this->config['id']),
+            esc_attr($this->config->get('id')),
             esc_html__('Select Media', 'default')
         );
 
-        if (!empty($mediaUrl)) {
+        if (! empty($mediaUrl)) {
             printf(
                 ' <button type="button" class="button %s-media-remove-button" data-field="%s">%s</button>',
                 esc_attr($htmlPrefix),
-                esc_attr($this->config['id']),
+                esc_attr($this->config->get('id')),
                 esc_html__('Remove', 'default')
             );
         }
 
         printf('<div class="%s-media-preview">', esc_attr($htmlPrefix));
-        if (!empty($mediaUrl) && wp_attachment_is_image($mediaId)) {
+        if (! empty($mediaUrl) && wp_attachment_is_image($mediaId)) {
             printf(
-                '<img src="%s" alt="" style="max-width: 150px; height: auto; margin-top: 10px;" />',
+                '<img src="%s" alt="" />',
                 esc_url($mediaUrl)
             );
-        } elseif (!empty($mediaUrl)) {
-            $file = (string)get_attached_file($mediaId);
+        } elseif (! empty($mediaUrl)) {
+            $file     = (string)get_attached_file($mediaId);
             $fileName = ! empty($file) ? basename($file) : '';
             printf('<p style="margin-top:10px;"><strong>File:</strong> %s</p>', esc_html($fileName));
         }
@@ -76,6 +76,6 @@ final class MediaField extends AbstractField
      */
     public function getDefaultValue(): int
     {
-        return (int) ($this->config['default'] ?? 0);
+        return (int)($this->config->get('default', 0));
     }
 }

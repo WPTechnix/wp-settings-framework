@@ -4,28 +4,24 @@ declare(strict_types=1);
 
 namespace WPTechnix\WPSettings;
 
+use WPTechnix\WPSettings\Interfaces\ConfigInterface;
+
 /**
- * Handles the enqueueing and rendering of all static assets.
+ * Handles the enqueueing and rendering of all static assets for the settings page.
  *
- * This class centralizes asset management. It intelligently loads external
- * libraries and uses a configurable HTML class prefix to prevent conflicts.
  * @noinspection JSUnusedLocalSymbols, CssUnusedSymbol
+ *
+ * @phpstan-import-type SettingsConfig from Settings
  */
 final class AssetManager
 {
     /**
-     * The complete settings configuration array.
-     * @var array<string, mixed>
-     */
-    private array $config = [];
-
-    /**
-     * Defines the external libraries that can be loaded as fallbacks.
+     * Defines the external libraries that can be loaded.
      *
      * @var array<string, array{
      *     handle: string,
-     *     script?: array<string, mixed>,
-     *     style?: array<string, mixed>
+     *     script?: array{src: string, deps: string[], version: string, in_footer: bool},
+     *     style?: array{src: string, deps: string[], version: string}
      * }>
      */
     private array $libraryPackages;
@@ -39,55 +35,58 @@ final class AssetManager
 
     /**
      * AssetManager constructor.
+     *
+     * @param ConfigInterface $config Settings Config.
      */
-    public function __construct()
-    {
-        $this->libraryPackages = [
-            'select2' => [
-                'handle' => 'select2',
-                'script' => [
-                    'src' => 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js',
-                    'deps' => ['jquery'], 'version' => '4.0.13', 'in_footer' => true,
+    public function __construct(
+        protected ConfigInterface $config
+    ) {
+        $this->config->deepMerge([
+            'assetPackages' => [
+                'select2'   => [
+                    'handle' => 'select2',
+                    'script' => [
+                        'src'       => 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js',
+                        'deps'      => ['jquery'],
+                        'version'   => '4.0.13',
+                        'in_footer' => true,
+                    ],
+                    'style'  => [
+                        'src'     => 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css',
+                        'deps'    => [],
+                        'version' => '4.0.13',
+                    ],
                 ],
-                'style'  => [
-                    'src' => 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css',
-                    'deps' => [], 'version' => '4.0.13',
+                'flatpickr' => [
+                    'handle' => 'flatpickr',
+                    'script' => [
+                        'src'       => 'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js',
+                        'deps'      => [],
+                        'version'   => '4.6.13',
+                        'in_footer' => true,
+                    ],
+                    'style'  => [
+                        'src'     => 'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css',
+                        'deps'    => [],
+                        'version' => '4.6.13',
+                    ],
                 ],
-            ],
-            'flatpickr' => [
-                'handle' => 'flatpickr',
-                'script' => [
-                    'src' => 'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js',
-                    'deps' => [], 'version' => '4.6.13', 'in_footer' => true,
-                ],
-                'style'  => [
-                    'src' => 'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css',
-                    'deps' => [], 'version' => '4.6.13',
-                ],
-            ],
-        ];
+            ]
+        ]);
+
+        $this->libraryPackages = $this->config->get('assetPackages');
 
         $this->fieldTypeToPackageMap = [
-            'select' => 'select2',
+            'select'      => 'select2',
             'multiselect' => 'select2',
-            'date' => 'flatpickr',
-            'datetime' => 'flatpickr',
-            'time' => 'flatpickr',
+            'date'        => 'flatpickr',
+            'datetime'    => 'flatpickr',
+            'time'        => 'flatpickr',
         ];
     }
 
     /**
-     * Sets the settings configuration array.
-     *
-     * @param array<string, mixed> $config The settings configuration.
-     */
-    public function setConfig(array $config): void
-    {
-        $this->config = $config;
-    }
-
-    /**
-     * Hooks the enqueue method into WordPress.
+     * Hooks the asset enqueueing method into WordPress.
      */
     public function init(): void
     {
@@ -95,13 +94,16 @@ final class AssetManager
     }
 
     /**
-     * Enqueues all necessary scripts and styles.
+     * Enqueues all necessary scripts and styles for the settings page.
+     *
+     * This method is hooked into 'admin_enqueue_scripts' and only loads assets
+     * on the relevant admin page.
      */
     public function enqueueAssets(): void
     {
-        $pageSlug = $this->config['pageSlug'] ?? '';
-        $screen = get_current_screen();
-        if (empty($pageSlug) || null === $screen || !str_contains($screen->id, $pageSlug)) {
+        $pageSlug = $this->config->get('pageSlug');
+        $screen   = get_current_screen();
+        if (empty($pageSlug) || null === $screen || ! str_contains($screen->id, $pageSlug)) {
             return;
         }
 
@@ -113,7 +115,7 @@ final class AssetManager
         $this->enqueueRequiredLibraries();
         $this->enqueueCodeEditorAssets();
 
-        wp_add_inline_script('jquery', $this->getInlineScripts());
+        wp_add_inline_script('jquery-core', $this->getInlineScripts());
         wp_add_inline_style('wp-admin', $this->getInlineStyles());
     }
 
@@ -122,15 +124,18 @@ final class AssetManager
      */
     private function enqueueRequiredLibraries(): void
     {
-        if (empty($this->config['fields'])) {
+        if (! $this->config->has('fields')) {
             return;
         }
 
+        $fields = $this->config->get('fields');
+
         $requiredPackages = [];
-        foreach ($this->config['fields'] as $field) {
+
+        foreach ($fields as $field) {
             $fieldType = $field['type'] ?? '';
             if (isset($this->fieldTypeToPackageMap[$fieldType])) {
-                $packageName = $this->fieldTypeToPackageMap[$fieldType];
+                $packageName                    = $this->fieldTypeToPackageMap[$fieldType];
                 $requiredPackages[$packageName] = true;
             }
         }
@@ -143,52 +148,48 @@ final class AssetManager
     }
 
     /**
-     * Enqueues a library package, checking for existing registrations first.
+     * Enqueues a single library package (style and/or script).
+     *
+     * It checks if the asset is already registered to avoid conflicts with other plugins.
+     *
      * @param array{
      *     handle: string,
-     *     script?: array<string, mixed>,
-     *     style?: array<string, mixed>
+     *     script?: array{src: string, deps: string[], version: string, in_footer: bool},
+     *     style?: array{src: string, deps: string[], version: string}
      * } $package The package definition.
      */
     private function enqueuePackage(array $package): void
     {
         $handle = $package['handle'];
         if (isset($package['style'])) {
-            if (!wp_style_is($handle, 'registered')) {
-                wp_register_style(
-                    $handle,
-                    $package['style']['src'],
-                    $package['style']['deps'],
-                    $package['style']['version']
-                );
+            if (! wp_style_is($handle, 'registered')) {
+                wp_register_style($handle, ...array_values($package['style']));
             }
             wp_enqueue_style($handle);
         }
         if (isset($package['script'])) {
-            if (!wp_script_is($handle, 'registered')) {
-                wp_register_script(
-                    $handle,
-                    $package['script']['src'],
-                    $package['script']['deps'],
-                    $package['script']['version'],
-                    $package['script']['in_footer']
-                );
+            if (! wp_script_is($handle, 'registered')) {
+                wp_register_script($handle, ...array_values($package['script']));
             }
             wp_enqueue_script($handle);
         }
     }
 
     /**
-     * Detects required CodeMirror languages and enqueues them.
+     * Enqueues the WordPress Code Editor assets for the required languages.
      */
     private function enqueueCodeEditorAssets(): void
     {
-        if (!function_exists('wp_enqueue_code_editor') || empty($this->config['fields'])) {
+        if (! function_exists('wp_enqueue_code_editor') || ! $this->config->has('fields')) {
             return;
         }
+
+        $fields = $this->config->get('fields');
+
         $requiredLanguages = [];
-        foreach ($this->config['fields'] as $field) {
-            if (($field['type'] ?? '') === 'code') {
+
+        foreach ($fields as $field) {
+            if ('code' === ($field['type'] ?? '')) {
                 $requiredLanguages[$field['language'] ?? 'css'] = true;
             }
         }
@@ -196,16 +197,14 @@ final class AssetManager
             return;
         }
         $mimeTypes = [
-            'css' => 'text/css',
-            'js' => 'text/javascript',
+            'css'        => 'text/css',
+            'js'         => 'text/javascript',
             'javascript' => 'text/javascript',
-            'html' => 'text/html',
-            'xml' => 'application/xml',
+            'html'       => 'text/html',
+            'xml'        => 'application/xml',
         ];
         foreach (array_keys($requiredLanguages) as $lang) {
-            wp_enqueue_code_editor([
-                'type' => $mimeTypes[$lang] ?? 'text/plain'
-            ]);
+            wp_enqueue_code_editor(['type' => $mimeTypes[$lang] ?? 'text/plain']);
         }
     }
 
@@ -216,27 +215,24 @@ final class AssetManager
      */
     private function getInlineScripts(): string
     {
-        $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
+        $htmlPrefix = $this->config->get('htmlPrefix', 'wptechnix-settings');
+
+        $addMediaTitle   = esc_js($this->config->get('labels.addMediaTitle', 'Add media'));
+        $selectMediaText = esc_js($this->config->get('labels.selectMediaText', 'Select'));
+        $removeMediaText = esc_js($this->config->get('labels.removeMediaText', 'Remove'));
 
         // phpcs:disable Generic.Files.LineLength
         return <<<JS
 		jQuery(function($) {
 			// Initialize WordPress color picker
 			if ($.fn.wpColorPicker) {
-				$('.{$htmlPrefix}-color-picker').wpColorPicker({
-					change: function(event, ui) {
-						$(event.target).trigger('change');
-					}
-				});
+				$('.{$htmlPrefix}-color-picker').wpColorPicker();
 			}
 
 			// Initialize Select2
 			if ($.fn.select2) {
 				try {
-					$('.{$htmlPrefix}-select2-field').not('.select2-hidden-accessible').select2({
-						width: '100%',
-						allowClear: true
-					});
+					$('.{$htmlPrefix}-select2-field').not('.select2-hidden-accessible').select2({ width: '100%', allowClear: true });
 				} catch (e) {
 					console.error('Settings Framework: Select2 Error:', e);
 				}
@@ -244,23 +240,9 @@ final class AssetManager
 
 			// Initialize Flatpickr
 			if (typeof flatpickr !== 'undefined') {
-				$('.{$htmlPrefix}-flatpickr-date').flatpickr({
-					dateFormat: 'Y-m-d',
-					altInput: true,
-					altFormat: 'F j, Y'
-				});
-				$('.{$htmlPrefix}-flatpickr-datetime').flatpickr({
-					enableTime: true,
-					dateFormat: 'Y-m-d H:i',
-					altInput: true,
-					altFormat: 'F j, Y at h:i K'
-				});
-				$('.{$htmlPrefix}-flatpickr-time').flatpickr({
-					enableTime: true,
-					noCalendar: true,
-					dateFormat: 'H:i',
-					time_24hr: true
-				});
+				$('.{$htmlPrefix}-flatpickr-date').flatpickr({ dateFormat: 'Y-m-d', altInput: true, altFormat: 'F j, Y' });
+				$('.{$htmlPrefix}-flatpickr-datetime').flatpickr({ enableTime: true, dateFormat: 'Y-m-d H:i', altInput: true, altFormat: 'F j, Y at h:i K' });
+				$('.{$htmlPrefix}-flatpickr-time').flatpickr({ enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true });
 			}
 
 			// Initialize WordPress media uploader
@@ -269,27 +251,23 @@ final class AssetManager
 				var button = $(this);
 				var fieldId = button.data('field');
 				var mediaUploader = wp.media({
-					title: 'Select Media',
-					button: {
-						text: 'Use this media'
-					},
+					title: '{$addMediaTitle}',
+					button: { text: '{$selectMediaText}' },
 					multiple: false
 				});
 				mediaUploader.on('select', function() {
 					var attachment = mediaUploader.state().get('selection').first().toJSON();
 					$('#' + fieldId).val(attachment.id).trigger('change');
-					var preview = button.siblings('.{$htmlPrefix}-media-preview');
+					var previewContainer = button.siblings('.{$htmlPrefix}-media-preview');
+					var previewHTML = '';
 					if (attachment.type === 'image') {
-						preview.html(
-                          '<img src="' + attachment.url + '" alt="" style="max-width: 150px; height: auto; margin-top: 10px;" />'
-                        );
+						previewHTML = '<img src="' + attachment.url + '" alt="" class="{$htmlPrefix}-media-preview-image" />';
 					} else {
-						preview.html(
-                           '<p style="margin-top:10px;"><strong>File:</strong> ' + attachment.filename + '</p>'
-                        );
+						previewHTML = '<div class="{$htmlPrefix}-media-preview-file"><span class="dashicons dashicons-media-default"></span> ' + attachment.filename + '</div>';
 					}
+					previewContainer.html(previewHTML);
 					if (!button.siblings('.{$htmlPrefix}-media-remove-button').length) {
-						button.after(' <button type="button" class="button {$htmlPrefix}-media-remove-button" data-field="' + fieldId + '">Remove</button>');
+						button.after(' <button type="button" class="button {$htmlPrefix}-media-remove-button" data-field="' + fieldId + '">{$removeMediaText}</button>');
 					}
 				});
 				mediaUploader.open();
@@ -303,7 +281,7 @@ final class AssetManager
 				button.remove();
 			});
 
-			// Initialize button groups.
+			// Initialize button groups
 			$('.{$htmlPrefix}-buttongroup-container').on('click', '.{$htmlPrefix}-buttongroup-option', function(e) {
 				e.preventDefault();
 				var button = $(this);
@@ -317,42 +295,31 @@ final class AssetManager
 			// Range sliders
 			function updateRangeSlider(slider) {
 				var value = slider.val();
-				slider
-				  .closest('.{$htmlPrefix}-enhanced-range-container')
-				  .find('.{$htmlPrefix}-range-value-input').val(value);
+				slider.closest('.{$htmlPrefix}-enhanced-range-container').find('.{$htmlPrefix}-range-value-input').val(value);
 			}
-			$('.{$htmlPrefix}-enhanced-range-slider').on('input', function() {
-				updateRangeSlider($(this));
-			});
+
+            $('.{$htmlPrefix}-enhanced-range-slider').on('input', function() {
+                updateRangeSlider($(this));
+            });
 			$('.{$htmlPrefix}-enhanced-range-slider').each(function() {
-				updateRangeSlider($(this));
-			});
+                updateRangeSlider($(this));
+            });
 
 			// Initialize CodeMirror
 			if (wp.codeEditor) {
 				$('.{$htmlPrefix}-code-editor').each(function() {
 					var textarea = $(this);
-					if (textarea.data('codemirror-initialized')) {
-						return;
-					}
+					if (textarea.data('codemirror-initialized')) { return; }
 					var language = textarea.data('language') || 'css';
 					var mimeType = 'text/' + language;
 					if (language === 'javascript' || language === 'js') mimeType = 'text/javascript';
 					if (language === 'html') mimeType = 'text/html';
 
 					var editorSettings = wp.codeEditor.defaultSettings ? _.clone(wp.codeEditor.defaultSettings) : {};
-					editorSettings.codemirror = _.extend({}, editorSettings.codemirror, {
-						mode: mimeType,
-						lineNumbers: true,
-						lineWrapping: true,
-						styleActiveLine: true
-					});
+					editorSettings.codemirror = _.extend({}, editorSettings.codemirror, { mode: mimeType, lineNumbers: true, lineWrapping: true, styleActiveLine: true });
 
 					var editor = wp.codeEditor.initialize(textarea, editorSettings);
-					editor.codemirror.on('change', function() {
-						editor.codemirror.save();
-						textarea.trigger('change');
-					});
+					editor.codemirror.on('change', function() { editor.codemirror.save(); textarea.trigger('change'); });
 					textarea.data('codemirror-initialized', true);
 				});
 			}
@@ -377,34 +344,21 @@ final class AssetManager
 
 					var show = false;
 					switch (operator) {
-						case '==':
-							show = (currentVal == condValue);
-							break;
-						case '!=':
-							show = (currentVal != condValue);
-							break;
-						case 'in':
-							show = Array.isArray(currentVal) ? currentVal.includes(condValue) : condValue.split(',').includes(currentVal);
-							break;
-						case 'not in':
-							show = Array.isArray(currentVal) ? !currentVal.includes(condValue) : !condValue.split(',').includes(currentVal);
-							break;
+						case '==': show = (currentVal == condValue); break;
+						case '!=': show = (currentVal != condValue); break;
+						case 'in': show = Array.isArray(currentVal) ? currentVal.includes(condValue) : condValue.split(',').includes(currentVal); break;
+						case 'not in': show = Array.isArray(currentVal) ? !currentVal.includes(condValue) : !condValue.split(',').includes(currentVal); break;
 					}
 
 					var container = field.closest('tr');
-					if (container.length) {
-						show ? container.show() : container.hide();
-					} else {
-					    show ? field.show() : field.hide();
-					}
+					show ? container.show() : container.hide();
 				});
 			}
 			$('body').on('change', 'input, select, textarea', toggleConditionalFields);
-			toggleConditionalFields(); // Initial check on page load.
+			toggleConditionalFields();
 		});
 JS;
-
-        // phpcs:enable Generic.Files.LineLength
+        // phpcs:enable
     }
 
     /**
@@ -414,9 +368,8 @@ JS;
      */
     private function getInlineStyles(): string
     {
-        $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
+        $htmlPrefix = $this->config->get('htmlPrefix');
 
-        // Nav should remain prefix-less.
         // phpcs:disable Generic.Files.LineLength
         return <<<CSS
 			nav.nav-tab-wrapper .dashicons {
@@ -439,6 +392,15 @@ JS;
 				height: 24px;
 				vertical-align: middle;
 			}
+
+			.{$htmlPrefix}-field-container input[readonly] {
+			  background-color: #fff !important;
+			}
+			.{$htmlPrefix}-radio-label {
+			  display: block;
+			  margin-bottom: 8px;
+			}
+
 			.{$htmlPrefix}-toggle input {
 				opacity: 0;
 				width: 0;
@@ -496,16 +458,15 @@ JS;
 				color: white;
 				box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 			}
-			.{$htmlPrefix}-media-field-container {
-				display: flex;
-				align-items: center;
-				gap: 10px;
-				flex-wrap: wrap;
+			.{$htmlPrefix}-media-preview {
+			    display: block;
+			    margin-top: 20px;
 			}
 			.{$htmlPrefix}-media-preview img {
-				border: 1px solid #ddd;
-				box-shadow: 0 1px 2px rgba(0,0,0,0.07);
-			}
+			  max-width: 150px;
+			  max-height: 150px;
+            }
+
 			.{$htmlPrefix}-enhanced-range-container {
 				display: flex;
 				align-items: center;
@@ -520,6 +481,6 @@ JS;
 				text-align: center;
 			}
 CSS;
-        // phpcs:enable Generic.Files.LineLength
+        // phpcs:enable
     }
 }

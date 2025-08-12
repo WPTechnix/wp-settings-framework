@@ -14,26 +14,26 @@ final class ButtonGroupField extends AbstractField
      */
     public function render(mixed $value, array $attributes): void
     {
-        $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
+        $htmlPrefix = $this->config->get('htmlPrefix', 'wptechnix-settings');
 
         printf(
             '<input type="hidden" name="%s" id="%s" value="%s" %s />',
-            esc_attr($this->config['name']),
-            esc_attr($this->config['id']),
-            esc_attr((string) $value),
+            esc_attr($this->config->get('name')),
+            esc_attr($this->config->get('id')),
+            esc_attr((string)$value),
             $this->buildAttributesString($attributes)
         );
 
         printf('<div class="%s-buttongroup-container">', esc_attr($htmlPrefix));
 
-        $options = $this->config['options'] ?? [];
+        $options = $this->config->get('options', []);
         foreach ($options as $optionValue => $optionLabel) {
-            $activeClass = ((string) $value === (string) $optionValue) ? ' active' : '';
+            $activeClass = ((string)$value === (string)$optionValue) ? ' active' : '';
             printf(
                 '<button type="button" class="%s-buttongroup-option%s" data-value="%s">%s</button>',
                 esc_attr($htmlPrefix),
                 esc_attr($activeClass),
-                esc_attr((string) $optionValue),
+                esc_attr((string)$optionValue),
                 esc_html($optionLabel)
             );
         }
@@ -45,10 +45,11 @@ final class ButtonGroupField extends AbstractField
      */
     public function sanitize(mixed $value): string
     {
-        $allowedValues = array_keys($this->config['options'] ?? []);
-        if (in_array((string) $value, $allowedValues, true)) {
-            return (string) $value;
+        $allowedValues = array_keys($this->config->get('options', []));
+        if (in_array((string)$value, $allowedValues, true)) {
+            return (string)$value;
         }
+
         return '';
     }
 }

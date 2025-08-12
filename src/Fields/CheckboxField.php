@@ -16,8 +16,8 @@ final class CheckboxField extends AbstractField
     {
         printf(
             '<input type="checkbox" id="%s" name="%s" value="1" %s %s />',
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
             checked($value, true, false),
             $this->buildAttributesString($attributes)
         );
@@ -36,6 +36,6 @@ final class CheckboxField extends AbstractField
      */
     public function getDefaultValue(): bool
     {
-        return (bool) ($this->config['default'] ?? false);
+        return (bool)($this->config->get('default', false));
     }
 }

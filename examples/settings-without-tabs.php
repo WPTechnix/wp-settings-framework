@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use WPTechnix\WPSettings\Settings;
 
+// Please make sure you require the composer autoload.
+// require_once plugin_dir_path(__FILE__) . '/vendor/autoload.php';
+
 add_action('plugins_loaded', 'wptechnix_settings_demo_without_tabs');
 
 /**
@@ -13,123 +16,166 @@ function wptechnix_settings_demo_without_tabs(): void
 {
     // 1. Create a new Settings instance.
     $settings = new Settings(
-        'wptechnix-demo-simple',           // Unique Page Slug
-        'Settings Demo (Simple)',         // Page Title
-        'Settings Demo (Simple)'          // Menu Title
+        'wptechnix_options_no_tabs',    // Unique option name for the database
+        'wptechnix-demo-no-tabs',       // Unique page slug
+        [
+            'pageTitle' => 'Settings Demo (No Tabs)',    // Page Title
+            'menuTitle' => 'Settings Demo (No Tabs)',    // Menu Title
+            'parentSlug' => 'tools.php'                 // Place this page under the "Tools" menu.
+        ]
     );
 
-    // 2. Add sections to organize fields.
+    // 2. Add sections directly to the page (no tabs are needed).
+    $settings->addSection('text_inputs', 'Text-Based Inputs', 'Fields for text, numbers, and passwords.')
+             ->addSection(
+                 'choice_inputs',
+                 'Choice-Based Inputs',
+                 'Fields for selecting one or more options.'
+             )
+             ->addSection('ui_inputs', 'Enhanced UI Inputs', 'Fields with special user interfaces.')
+             ->addSection(
+                 'advanced_inputs',
+                 'Advanced & Special Inputs',
+                 'Media, code, and other powerful fields.'
+             )
+             ->addSection(
+                 'conditional_section',
+                 'Conditional Logic Demo',
+                 'Show and hide fields based on other fields\' values.'
+             );
+
+    // 3. Add fields and assign them to the correct sections.
+
+    // --- FIELDS FOR "Text-Based Inputs" SECTION ---
     $settings
-        ->addSection(
-            'basic_fields_section',
-            'Basic Input Fields',
-            'A showcase of standard text, choice, and UI fields.'
+        ->addField('demo_text', 'text_inputs', 'text', 'Text Field')
+        ->addField('demo_email', 'text_inputs', 'email', 'Email Field')
+        ->addField('demo_password', 'text_inputs', 'password', 'Password Field')
+        ->addField('demo_number', 'text_inputs', 'number', 'Number Field', ['default' => 42])
+        ->addField('demo_url', 'text_inputs', 'url', 'URL Field')
+        ->addField('demo_textarea', 'text_inputs', 'textarea', 'Textarea Field');
+
+    // --- FIELDS FOR "Choice-Based Inputs" SECTION ---
+    $settings
+        ->addField('demo_checkbox', 'choice_inputs', 'checkbox', 'Checkbox Field')
+        ->addField('demo_toggle', 'choice_inputs', 'toggle', 'Toggle Switch', ['default' => true])
+        ->addField(
+            'demo_select',
+            'choice_inputs',
+            'select',
+            'Select Dropdown',
+            ['options' => ['a' => 'Option A', 'b' => 'Option B'], 'placeholder' => 'Select Option']
         )
-        ->addSection(
-            'advanced_fields_section',
-            'Advanced & Conditional Fields',
-            'A showcase of advanced fields and conditional logic.'
+        ->addField(
+            'demo_multiselect',
+            'choice_inputs',
+            'multiselect',
+            'Multi-Select',
+            ['options' => ['a' => 'Choice A', 'b' => 'Choice B', 'c' => 'Choice C'], 'placeholder' => 'Select Options']
+        )
+        ->addField(
+            'demo_radio',
+            'choice_inputs',
+            'radio',
+            'Radio Buttons',
+            ['options' => ['yes' => 'Yes', 'no' => 'No']]
+        )
+        ->addField(
+            'demo_buttongroup',
+            'choice_inputs',
+            'buttongroup',
+            'Button Group',
+            ['options' => ['left' => 'Left', 'center' => 'Center', 'right' => 'Right']]
         );
 
-
-    // 3. Add all field types to the sections.
+    // --- FIELDS FOR "Enhanced UI Inputs" SECTION ---
     $settings
-        // --- Fields for the "Basic Inputs" Section ---
-        ->addField(
-            'demo_text', 'basic_fields_section', 'text', 'Text Field',
-            ['description' => 'A standard single-line text input.', 'attributes' => ['placeholder' => 'Enter some text...']]
-        )
-        ->addField(
-            'demo_textarea', 'basic_fields_section', 'textarea', 'Textarea Field',
-            ['description' => 'A multi-line text input area.', 'attributes' => ['rows' => 4]]
-        )
-        ->addField(
-            'demo_toggle', 'basic_fields_section', 'toggle', 'Toggle Switch',
-            ['description' => 'A modern on/off toggle switch.', 'default' => true]
-        )
-        ->addField(
-            'demo_select', 'basic_fields_section', 'select', 'Select Dropdown',
-            ['options' => ['option_1' => 'Option One', 'option_2' => 'Option Two', 'option_3' => 'Option Three']]
-        )
-        ->addField(
-            'demo_radio', 'basic_fields_section', 'radio', 'Radio Buttons',
-            ['options' => ['yes' => 'Yes', 'no' => 'No', 'maybe' => 'Maybe'], 'default' => 'yes']
-        )
-        ->addField(
-            'demo_color', 'basic_fields_section', 'color', 'Color Picker',
-            ['description' => 'A field for selecting a hex color value.', 'default' => '#52ACCC']
-        )
-        ->addField(
-            'demo_date', 'basic_fields_section', 'date', 'Date Picker',
-            ['description' => 'A field for selecting a calendar date.']
-        )
+        ->addField('demo_color', 'ui_inputs', 'color', 'Color Picker')
+        ->addField('demo_date', 'ui_inputs', 'date', 'Date Picker')
+        ->addField('demo_datetime', 'ui_inputs', 'datetime', 'Date & Time Picker')
+        ->addField('demo_time', 'ui_inputs', 'time', 'Time Picker')
+        ->addField('demo_range', 'ui_inputs', 'range', 'Range Slider', ['default' => 75]);
 
-        // --- Fields for the "Advanced & Conditional" Section ---
+    // --- FIELDS FOR "Advanced & Special Inputs" SECTION ---
+    $settings
+        ->addField('demo_media', 'advanced_inputs', 'media', 'Media Uploader')
         ->addField(
-            'demo_media', 'advanced_fields_section', 'media', 'Media Uploader',
-            ['description' => 'Upload an image or file using the WordPress Media Library.']
-        )
-        ->addField(
-            'demo_code_html', 'advanced_fields_section', 'code', 'Code Editor (HTML)',
+            'demo_code_html',
+            'advanced_inputs',
+            'code',
+            'Code Editor (HTML)',
             [
                 'description' => 'A code editor with HTML syntax highlighting.',
-                'language' => 'html',
-                'attributes' => ['placeholder' => ''],
+                'language'    => 'html',
             ]
         )
         ->addField(
-            'demo_code_css', 'advanced_fields_section', 'code', 'Code Editor (CSS)',
+            'demo_code_css',
+            'advanced_inputs',
+            'code',
+            'Code Editor (CSS)',
             [
                 'description' => 'A code editor with CSS syntax highlighting.',
-                'language' => 'css',
-                'attributes' => ['placeholder' => ''],
+                'language'    => 'css',
             ]
         )
         ->addField(
-            'demo_code_js', 'advanced_fields_section', 'code', 'Code Editor (JS)',
+            'demo_code_js',
+            'advanced_inputs',
+            'code',
+            'Code Editor (JS)',
             [
                 'description' => 'A code editor with JavaScript syntax highlighting.',
-                'language' => 'javascript',
-                'attributes' => ['placeholder' => ''],
-            ]
-        )
-        ->addField( // --- Start Conditional Logic Demo ---
-            'demo_enable_advanced', // This is the CONTROLLING field
-            'advanced_fields_section',
-            'toggle',
-            'Enable Advanced Options',
-            ['description' => 'Turn this on to reveal hidden advanced fields below.', 'default' => false]
-        )
-        ->addField(
-            'demo_conditional_api_key', // This is the CONDITIONAL field
-            'advanced_fields_section',
-            'text',
-            'Conditional API Key',
-            [
-                'description' => 'This field is only visible when the toggle above is ON.',
-                'conditional' => [
-                    'field' => 'demo_enable_advanced', // The ID of the controlling field
-                    'value' => '1',                    // The value to check for (1 for 'on')
-                    'operator' => '==',                // The comparison operator
-                ]
+                'language'    => 'javascript',
             ]
         )
         ->addField(
-            'demo_conditional_mode', // This is another CONDITIONAL field
-            'advanced_fields_section',
-            'buttongroup',
-            'Conditional Mode',
-            [
-                'description' => 'This button group is also only visible when the toggle is ON.',
-                'options' => ['live' => 'Live', 'test' => 'Test'],
-                'default' => 'test',
-                'conditional' => [
-                    'field' => 'demo_enable_advanced',
-                    'value' => '1',
-                ]
-            ]
-        ); // --- End Conditional Logic Demo ---
+            'demo_description',
+            'advanced_inputs',
+            'description',
+            'Description Field',
+            ['description' => 'This is a read-only field used to display important information. It supports <strong>HTML</strong>.']
+        );
 
+    // --- FIELDS FOR "Conditional Logic Demo" SECTION ---
+    $settings
+        ->addField(
+            'demo_contact_method', // The CONTROLLING field
+            'conditional_section',
+            'radio',
+            'Preferred Contact Method',
+            [
+                'description' => 'Select a method to see different conditional fields appear.',
+                'options'     => ['email' => 'Email', 'phone' => 'Phone Call', 'none' => 'No Contact'],
+                'default'     => 'none',
+            ]
+        )
+        ->addField(
+            'demo_conditional_email', // A CONDITIONAL field
+            'conditional_section',
+            'email',
+            'Contact Email Address',
+            [
+                'description' => 'This only appears if "Email" is selected.',
+                'conditional' => [
+                    'field' => 'demo_contact_method',
+                    'value' => 'email',
+                ],
+            ]
+        )
+        ->addField(
+            'demo_conditional_phone', // Another CONDITIONAL field
+            'conditional_section',
+            'text',
+            'Contact Phone Number',
+            [
+                'description' => 'This only appears if "Phone Call" is selected.',
+                'conditional' => [
+                    'field' => 'demo_contact_method',
+                    'value' => 'phone',
+                ],
+            ]
+        );
 
     // 4. Initialize the settings page.
     $settings->init();

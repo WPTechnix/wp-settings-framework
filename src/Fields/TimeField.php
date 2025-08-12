@@ -14,8 +14,10 @@ final class TimeField extends AbstractField
      */
     public function render(mixed $value, array $attributes): void
     {
+        $htmlPrefix = $this->config->get('htmlPrefix', 'wptechnix-settings');
+
         $defaultAttributes = [
-            'class' => 'regular-text flatpickr-time',
+            'class'    => "regular-text {$htmlPrefix}-flatpickr-time",
             'readonly' => 'readonly'
         ];
 
@@ -23,9 +25,9 @@ final class TimeField extends AbstractField
 
         printf(
             '<input type="text" id="%s" name="%s" value="%s" %s />',
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
-            esc_attr((string) $value),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
+            esc_attr((string)$value),
             $this->buildAttributesString($mergedAttributes)
         );
     }
@@ -35,6 +37,6 @@ final class TimeField extends AbstractField
      */
     public function sanitize(mixed $value): string
     {
-        return sanitize_text_field((string) $value);
+        return sanitize_text_field((string)$value);
     }
 }

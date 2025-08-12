@@ -9,84 +9,122 @@ use WPTechnix\WPSettings\Interfaces\SettingsInterface;
 
 /**
  * A fluent builder for creating and managing WordPress admin settings pages.
+ *
+ * @phpstan-type SettingsConfig array{
+ *      optionName: string,
+ *      optionGroup: string,
+ *      pageSlug: string,
+ *      parentSlug: string,
+ *      capability: string,
+ *      pageTitle: string,
+ *      menuTitle: string,
+ *      useTabs: bool,
+ *      htmlPrefix: string,
+ *      activeTab: ?string,
+ *      tabs: array<string, array{
+ *          title: string,
+ *          icon: string
+ *      }>,
+ *      sections: array<string, array{
+ *          title: string,
+ *          description: string,
+ *          tab: string
+ *      }>,
+ *      fields: array<string, array<string, mixed>>,
+ *      assetPackages: array<string, mixed>,
+ *      labels: array<string, string>
+ *  }
  */
 class Settings implements SettingsInterface
 {
     /**
-     * The settings configuration array.
+     * The central configuration object for the settings page.
      *
-     * @var array<string, mixed>
+     * @var Config
      */
-    private array $config = [
-        'tabs'     => [],
-        'sections' => [],
-        'fields'   => [],
-    ];
+    protected Config $config;
 
     /**
-     * The FieldFactory instance.
+     * Instance of the factory responsible for creating field objects.
      *
      * @var FieldFactory
      */
-    private FieldFactory $fieldFactory;
+    protected FieldFactory $fieldFactory;
 
     /**
-     * The AssetManager instance.
+     * Instance of the asset manager for enqueueing scripts and styles.
      *
      * @var AssetManager
      */
-    private AssetManager $assetManager;
+    protected AssetManager $assetManager;
 
     /**
-     * A cached copy of the settings options array from the database.
+     * Instance of the page renderer responsible for all HTML output.
+     *
+     * @var PageRenderer
+     */
+    protected PageRenderer $pageRenderer;
+
+    /**
+     * A cache for the options loaded from the database for the current request.
+     * This prevents multiple `get_option()` calls on the same page load.
      *
      * @var array<string, mixed>|null
      */
-    private ?array $options = null;
+    protected ?array $savedOptions = null;
 
     /**
      * Settings constructor.
      *
-     * @param string               $pageSlug   The unique settings page slug.
-     * @param string|null          $pageTitle  Optional. The title for the settings page. Defaults to "Settings".
-     * @param string|null          $menuTitle  Optional. The title for the admin menu. Defaults to the page title.
-     * @param array<string, mixed> $options    Optional configuration overrides.
+     * Initializes the settings framework with essential parameters and default configurations.
+     *
+     * @param string $optionName The name of the option to be stored in the wp_options table.
+     * @param string $pageSlug The unique slug for the settings page URL.
+     * @param array<string, mixed> $options Optional configuration overrides.
+     *
+     * @throws InvalidArgumentException If optionName or pageSlug are empty.
      */
-    public function __construct(
-        string $pageSlug,
-        ?string $pageTitle = null,
-        ?string $menuTitle = null,
-        array $options = []
-    ) {
+    public function __construct(string $optionName, string $pageSlug, array $options = [])
+    {
+        if (empty($optionName)) {
+            throw new InvalidArgumentException('Option name cannot be empty.');
+        }
         if (empty($pageSlug)) {
             throw new InvalidArgumentException('Page slug cannot be empty.');
         }
 
-        $this->fieldFactory = new FieldFactory();
-        $this->assetManager = new AssetManager();
-
-        $finalPageTitle = $pageTitle ?? __('Settings', 'default');
-        $finalMenuTitle = $menuTitle ?? $finalPageTitle;
-
-        $this->config = array_replace_recursive(
-            [
-                'pageSlug'    => $pageSlug,
-                'pageTitle'   => $finalPageTitle,
-                'menuTitle'   => $finalMenuTitle,
-                'capability'  => 'manage_options',
-                'parentSlug'  => 'options-general.php',
-                'useTabs'     => false,
-                'optionName'  => $pageSlug . '_settings',
-                'optionGroup' => $pageSlug . '_settings_group',
-                'htmlPrefix'  => 'wptechnix-settings', // no underscore or dash in end.
-                'labels'      => [
-                    'noPermission' => __('You do not have permission to access this page.', 'default'),
-                    'selectMedia'  => __('Select Media', 'default'),
-                    'remove'       => __('Remove', 'default'),
-                ],
+        /** @phpstan-var SettingsConfig $defaults */
+        $defaults = [
+            'optionName'    => $optionName,
+            'optionGroup'   => $optionName . '_group',
+            'pageSlug'      => $pageSlug,
+            'parentSlug'    => 'options-general.php',
+            'capability'    => 'manage_options',
+            'pageTitle'     => 'Settings',
+            'menuTitle'     => 'Settings',
+            'useTabs'       => false,
+            'htmlPrefix'    => 'wptechnix-settings',
+            'tabs'          => [],
+            'activeTab'     => null,
+            'sections'      => [],
+            'fields'        => [],
+            'assetPackages' => $this->getDefaultAssetPackages(),
+            'labels'        => [
+                'noPermission'    => 'You do not have permission to access this page.',
+                'addMediaTitle'   => __('Add media', 'default'),
+                'selectMediaText' => __('Select', 'default'),
+                'removeMediaText' => __('Remove', 'default'),
+                /* translators: %s: Field label */
+                'validationError' => 'Invalid value for %s. The setting has been reverted to its default value.',
             ],
-            $options
-        );
+        ];
+
+        $this->config = new Config($defaults);
+        $this->config->deepMerge($options);
+
+        $this->fieldFactory = new FieldFactory();
+        $this->assetManager = new AssetManager($this->config);
+        $this->pageRenderer = new PageRenderer($this->config, $this->fieldFactory, $this);
     }
 
     /**
@@ -94,7 +132,8 @@ class Settings implements SettingsInterface
      */
     public function setPageTitle(string $pageTitle): static
     {
-        $this->config['pageTitle'] = $pageTitle;
+        $this->config->set('pageTitle', $pageTitle);
+
         return $this;
     }
 
@@ -103,7 +142,28 @@ class Settings implements SettingsInterface
      */
     public function setMenuTitle(string $menuTitle): static
     {
-        $this->config['menuTitle'] = $menuTitle;
+        $this->config->set('menuTitle', $menuTitle);
+
+        return $this;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function setCapability(string $capability): static
+    {
+        $this->config->set('capability', $capability);
+
+        return $this;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function setParentSlug(string $parentSlug): static
+    {
+        $this->config->set('parentSlug', $parentSlug);
+
         return $this;
     }
 
@@ -112,8 +172,10 @@ class Settings implements SettingsInterface
      */
     public function addTab(string $id, string $title, string $icon = ''): static
     {
-        $this->config['tabs'][$id] = ['title' => $title, 'icon' => $icon];
-        $this->config['useTabs'] = true;
+        $id = sanitize_key($id);
+        $this->config->set("tabs.{$id}", ['title' => $title, 'icon' => $icon]);
+        $this->config->set('useTabs', true);
+
         return $this;
     }
 
@@ -122,38 +184,40 @@ class Settings implements SettingsInterface
      */
     public function addSection(string $id, string $title, string $description = '', string $tabId = ''): static
     {
-        $this->config['sections'][$id] = ['title' => $title, 'description' => $description, 'tab' => $tabId];
+        $id = sanitize_key($id);
+        $this->config->set("sections.{$id}", [
+            'title'       => $title,
+            'description' => $description,
+            'tab'         => $tabId,
+        ]);
+
         return $this;
     }
 
     /**
      * {@inheritDoc}
      */
-    public function addField(
-        string $id,
-        string $sectionId,
-        string $type,
-        string $label,
-        array $args = []
-    ): static {
-        if (!isset($this->config['sections'][$sectionId])) {
+    public function addField(string $id, string $sectionId, string $type, string $label, array $args = []): static
+    {
+        if (! $this->config->has("sections.{$sectionId}")) {
             throw new InvalidArgumentException("Section '{$sectionId}' must be added before adding fields to it.");
         }
-        if (!in_array($type, $this->fieldFactory->getSupportedTypes(), true)) {
+        if (! in_array($type, $this->fieldFactory->getSupportedTypes(), true)) {
             throw new InvalidArgumentException("Field type '{$type}' is not supported.");
         }
 
-        $this->config['fields'][$id] = array_merge(
-            [
-                'id'          => $id,
-                'name'        => $this->config['optionName'] . '[' . $id . ']',
-                'section'     => $sectionId,
-                'type'        => $type,
-                'label'       => $label,
-                'description' => '',
-            ],
-            $args
-        );
+        $fieldConfig = array_merge([
+            'id'          => $id,
+            'name'        => $this->getOptionName() . '[' . $id . ']',
+            'section'     => $sectionId,
+            'type'        => $type,
+            'label'       => $label,
+            'description' => '',
+            'labels'      => $this->config->get('labels'),
+        ], $args);
+
+        $this->config->set("fields.{$id}", $fieldConfig);
+
         return $this;
     }
 
@@ -162,65 +226,61 @@ class Settings implements SettingsInterface
      */
     public function init(): void
     {
-        $this->assetManager->setConfig($this->config);
-        $this->assetManager->init();
-
         add_action('admin_menu', [$this, 'registerPage']);
         add_action('admin_init', [$this, 'registerSettings']);
+        $this->assetManager->init();
     }
 
     /**
      * Registers the settings page with the WordPress admin menu.
      *
-     * @internal
+     * @internal This method is a callback for the 'admin_menu' hook and should not be called directly.
      */
     public function registerPage(): void
     {
-        $renderer = new PageRenderer($this->config, $this->fieldFactory);
-
         add_submenu_page(
-            $this->config['parentSlug'],
-            $this->config['pageTitle'],
-            $this->config['menuTitle'],
-            $this->config['capability'],
-            $this->config['pageSlug'],
-            [$renderer, 'renderPage']
+            $this->config->get('parentSlug'),
+            $this->config->get('pageTitle'),
+            $this->config->get('menuTitle'),
+            $this->config->get('capability'),
+            $this->config->get('pageSlug'),
+            [$this->pageRenderer, 'renderPage']
         );
     }
 
     /**
      * Registers the settings, sections, and fields with the WordPress Settings API.
      *
-     * @internal
+     * @internal This method is a callback for the 'admin_init' hook and should not be called directly.
      */
     public function registerSettings(): void
     {
+        $this->determineAndSetActiveTab();
         $sanitizer = new Sanitizer($this->config, $this->fieldFactory);
-        $renderer = new PageRenderer($this->config, $this->fieldFactory);
 
         register_setting(
-            $this->config['optionGroup'],
-            $this->config['optionName'],
+            $this->config->get('optionGroup'),
+            $this->config->get('optionName'),
             ['sanitize_callback' => [$sanitizer, 'sanitize']]
         );
 
-        foreach ($this->config['sections'] as $id => $section) {
+        foreach ($this->config->get('sections', []) as $id => $section) {
             add_settings_section(
                 $id,
                 $section['title'],
-                !empty($section['description'])
+                ! empty($section['description'])
                     ? fn() => print('<p class="section-description">' . wp_kses_post($section['description']) . '</p>')
                     : '__return_null',
-                $this->config['pageSlug']
+                $this->config->get('pageSlug')
             );
         }
 
-        foreach ($this->config['fields'] as $id => $field) {
+        foreach ($this->config->get('fields', []) as $id => $field) {
             add_settings_field(
                 $id,
                 $field['label'],
-                [$renderer, 'renderField'],
-                $this->config['pageSlug'],
+                [$this->pageRenderer, 'renderField'],
+                $this->config->get('pageSlug'),
                 $field['section'],
                 ['id' => $id, 'label_for' => $id]
             );
@@ -230,36 +290,97 @@ class Settings implements SettingsInterface
     /**
      * {@inheritDoc}
      */
-    public function getOptionName(): string
+    public function get(string $key, mixed $default = null): mixed
     {
-        return $this->config['optionName'];
-    }
+        if (! isset($this->savedOptions)) {
+            $optionsFromDb      = get_option($this->getOptionName(), []);
+            $this->savedOptions = is_array($optionsFromDb) ? $optionsFromDb : [];
+        }
 
+        if (array_key_exists($key, $this->savedOptions)) {
+            return $this->savedOptions[$key];
+        }
+
+        if (null === $default) {
+            $default = $this->config->get("fields.{$key}.default");
+        }
+
+        return $this->config->get($key, $default);
+    }
 
     /**
      * {@inheritDoc}
      */
-    public function get(string $key, mixed $default = null): mixed
+    public function getOptionName(): string
     {
-        // First, check if the options have already been fetched for this request.
-        if (!isset($this->options)) {
-            // If not, fetch from the database once and cache the result.
-            $this->options = get_option($this->getOptionName(), []);
-            if (!is_array($this->options)) {
-                $this->options = [];
-            }
+        return $this->config->get('optionName');
+    }
+
+    /**
+     * Determines the active tab and stores it in the config object.
+     *
+     * @internal This is called late in the lifecycle to ensure all tabs have been registered.
+     */
+    private function determineAndSetActiveTab(): void
+    {
+        if (empty($this->config->get('useTabs'))) {
+            return;
         }
 
-        // Return the value from the cached array, or the provided default.
-        if (isset($this->options[$key])) {
-            return $this->options[$key];
+        $tabs = $this->config->get('tabs', []);
+        if (empty($tabs)) {
+            $this->config->set('useTabs', false);
+
+            return;
         }
 
-        // If the key is not in the options, check for a configured default for that field.
-        if (isset($this->config['fields'][$key]['default'])) {
-            return $this->config['fields'][$key]['default'];
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $activeTab = sanitize_text_field(wp_unslash($_REQUEST['tab'] ?? ''));
+
+        if (empty($activeTab) || ! isset($tabs[$activeTab])) {
+            $activeTab = (string)array_key_first($tabs);
         }
 
-        return $default;
+        $this->config->set('activeTab', $activeTab);
+    }
+
+    /**
+     * Provides default definitions for external asset packages.
+     *
+     * @return array<string, mixed> The default asset package configurations.
+     * @internal
+     */
+    private function getDefaultAssetPackages(): array
+    {
+        return [
+            'select2'   => [
+                'handle' => 'select2',
+                'script' => [
+                    'src'       => 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js',
+                    'deps'      => ['jquery'],
+                    'version'   => '4.0.13',
+                    'in_footer' => true
+                ],
+                'style'  => [
+                    'src'     => 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css',
+                    'deps'    => [],
+                    'version' => '4.0.13'
+                ],
+            ],
+            'flatpickr' => [
+                'handle' => 'flatpickr',
+                'script' => [
+                    'src'       => 'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js',
+                    'deps'      => [],
+                    'version'   => '4.6.13',
+                    'in_footer' => true
+                ],
+                'style'  => [
+                    'src'     => 'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css',
+                    'deps'    => [],
+                    'version' => '4.6.13'
+                ],
+            ],
+        ];
     }
 }

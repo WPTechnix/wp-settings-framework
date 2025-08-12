@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use WPTechnix\WPSettings\Settings;
 
+// Please make sure you require the composer autoload.
+// require_once plugin_dir_path(__FILE__) . '/vendor/autoload.php';
+
 add_action('plugins_loaded', 'wptechnix_settings_demo_with_tabs');
 
 /**
@@ -13,10 +16,13 @@ function wptechnix_settings_demo_with_tabs(): void
 {
     // 1. Create a new Settings instance.
     $settings = new Settings(
-        'wptechnix-demo-tabs',      // Unique Page Slug
-        'Settings Demo (Tabs)',    // Page Title
-        'Settings Demo (Tabs)',    // Menu Title
-        ['parentSlug' => 'tools.php'] // Place this page under the "Tools" menu.
+        'wptechnix_options_tabs',        // Unique option name for the database
+        'wptechnix-demo-tabs',           // Unique page slug
+        [
+            'pageTitle' => 'Settings Demo (Tabs)',    // Page Title
+            'menuTitle' => 'Settings Demo (Tabs)',    // Menu Title
+            'parentSlug' => 'tools.php'                // Place this page under the "Tools" menu.
+        ]
     );
 
     // 2. Add tabs to organize the settings page.
@@ -26,10 +32,25 @@ function wptechnix_settings_demo_with_tabs(): void
 
     // 3. Add sections and assign them to the correct tabs.
     $settings->addSection('text_inputs', 'Text-Based Inputs', 'Fields for text, numbers, and passwords.', 'inputs')
-             ->addSection('choice_inputs', 'Choice-Based Inputs', 'Fields for selecting one or more options.', 'choices')
+             ->addSection(
+                 'choice_inputs',
+                 'Choice-Based Inputs',
+                 'Fields for selecting one or more options.',
+                 'choices'
+             )
              ->addSection('ui_inputs', 'Enhanced UI Inputs', 'Fields with special user interfaces.', 'choices')
-             ->addSection('advanced_inputs', 'Advanced & Special Inputs', 'Media, code, and other powerful fields.', 'advanced')
-             ->addSection('conditional_section', 'Conditional Logic Demo', 'Show and hide fields based on other fields\' values.', 'advanced');
+             ->addSection(
+                 'advanced_inputs',
+                 'Advanced & Special Inputs',
+                 'Media, code, and other powerful fields.',
+                 'advanced'
+             )
+             ->addSection(
+                 'conditional_section',
+                 'Conditional Logic Demo',
+                 'Show and hide fields based on other fields\' values.',
+                 'advanced'
+             );
 
     // --- FIELDS FOR "INPUTS & TEXT" TAB ---
     $settings
@@ -44,10 +65,34 @@ function wptechnix_settings_demo_with_tabs(): void
     $settings
         ->addField('demo_checkbox', 'choice_inputs', 'checkbox', 'Checkbox Field')
         ->addField('demo_toggle', 'choice_inputs', 'toggle', 'Toggle Switch', ['default' => true])
-        ->addField('demo_select', 'choice_inputs', 'select', 'Select Dropdown', ['options' => ['a' => 'Option A', 'b' => 'Option B']])
-        ->addField('demo_multiselect', 'choice_inputs', 'multiselect', 'Multi-Select', ['options' => ['a' => 'Choice A', 'b' => 'Choice B', 'c' => 'Choice C']])
-        ->addField('demo_radio', 'choice_inputs', 'radio', 'Radio Buttons', ['options' => ['yes' => 'Yes', 'no' => 'No']])
-        ->addField('demo_buttongroup', 'choice_inputs', 'buttongroup', 'Button Group', ['options' => ['left' => 'Left', 'center' => 'Center', 'right' => 'Right']])
+        ->addField(
+            'demo_select',
+            'choice_inputs',
+            'select',
+            'Select Dropdown',
+            ['options' => ['a' => 'Option A', 'b' => 'Option B'], 'placeholder' => 'Select Option']
+        )
+        ->addField(
+            'demo_multiselect',
+            'choice_inputs',
+            'multiselect',
+            'Multi-Select',
+            ['options' => ['a' => 'Choice A', 'b' => 'Choice B', 'c' => 'Choice C'], 'placeholder' => 'Select Options']
+        )
+        ->addField(
+            'demo_radio',
+            'choice_inputs',
+            'radio',
+            'Radio Buttons',
+            ['options' => ['yes' => 'Yes', 'no' => 'No']]
+        )
+        ->addField(
+            'demo_buttongroup',
+            'choice_inputs',
+            'buttongroup',
+            'Button Group',
+            ['options' => ['left' => 'Left', 'center' => 'Center', 'right' => 'Right']]
+        )
         ->addField('demo_color', 'ui_inputs', 'color', 'Color Picker')
         ->addField('demo_date', 'ui_inputs', 'date', 'Date Picker')
         ->addField('demo_datetime', 'ui_inputs', 'datetime', 'Date & Time Picker')
@@ -58,31 +103,40 @@ function wptechnix_settings_demo_with_tabs(): void
     $settings
         ->addField('demo_media', 'advanced_inputs', 'media', 'Media Uploader')
         ->addField(
-            'demo_code_html', 'advanced_inputs', 'code', 'Code Editor (HTML)',
+            'demo_code_html',
+            'advanced_inputs',
+            'code',
+            'Code Editor (HTML)',
             [
                 'description' => 'A code editor with HTML syntax highlighting.',
-                'language' => 'html',
-                'attributes' => ['placeholder' => ''],
+                'language'    => 'html',
             ]
         )
         ->addField(
-            'demo_code_css', 'advanced_inputs', 'code', 'Code Editor (CSS)',
+            'demo_code_css',
+            'advanced_inputs',
+            'code',
+            'Code Editor (CSS)',
             [
                 'description' => 'A code editor with CSS syntax highlighting.',
-                'language' => 'css',
-                'attributes' => ['placeholder' => ''],
+                'language'    => 'css',
             ]
         )
         ->addField(
-            'demo_code_js', 'advanced_inputs', 'code', 'Code Editor (JS)',
+            'demo_code_js',
+            'advanced_inputs',
+            'code',
+            'Code Editor (JS)',
             [
                 'description' => 'A code editor with JavaScript syntax highlighting.',
-                'language' => 'javascript',
-                'attributes' => ['placeholder' => ''],
+                'language'    => 'javascript',
             ]
         )
         ->addField(
-            'demo_description', 'advanced_inputs', 'description', 'Description Field',
+            'demo_description',
+            'advanced_inputs',
+            'description',
+            'Description Field',
             ['description' => 'This is a read-only field used to display important information. It supports <strong>HTML</strong>.']
         )
 

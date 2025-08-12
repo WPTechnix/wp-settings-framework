@@ -14,7 +14,7 @@ interface FieldInterface
      *
      * This method is responsible for echoing the complete HTML for the form element.
      *
-     * @param mixed                          $value      The current value of the field.
+     * @param mixed $value The current value of the field.
      * @param array<string, string|int|bool> $attributes Additional HTML attributes for the field.
      */
     public function render(mixed $value, array $attributes): void;
@@ -26,6 +26,7 @@ interface FieldInterface
      * before being persisted to the database.
      *
      * @param mixed $value The raw input value to be sanitized.
+     *
      * @return mixed The sanitized value.
      */
     public function sanitize(mixed $value): mixed;

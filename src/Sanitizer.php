@@ -5,103 +5,148 @@ declare(strict_types=1);
 namespace WPTechnix\WPSettings;
 
 use InvalidArgumentException;
+use WPTechnix\WPSettings\Interfaces\ConfigInterface;
 
 /**
- * Sanitizes the settings array before it is saved to the database.
+ * Sanitizes settings before they are saved to the database.
  *
- * This class ensures that all data conforms to the expected format and is
- * safe for storage. It iterates through all registered fields and applies
- * the appropriate sanitization logic.
+ * This class is state-aware. When sanitizing a form submission (especially
+ * from a tabbed interface), it merges the newly submitted values with the
+ * existing saved values to prevent data loss from other tabs.
  */
 final class Sanitizer
 {
     /**
-     * The full settings configuration array.
-     *
-     * @var array<string, mixed>
-     */
-    private array $config;
-
-    /**
-     * The FieldFactory instance for creating field objects.
-     *
-     * @var FieldFactory
-     */
-    private FieldFactory $fieldFactory;
-
-    /**
      * Sanitizer constructor.
      *
-     * @param array<string, mixed> $config       The settings configuration.
-     * @param FieldFactory         $fieldFactory The factory for creating field objects.
+     * @param ConfigInterface $config The shared configuration object.
+     * @param FieldFactory $fieldFactory The factory for creating field objects.
      */
-    public function __construct(array $config, FieldFactory $fieldFactory)
-    {
-        $this->config = $config;
-        $this->fieldFactory = $fieldFactory;
+    public function __construct(
+        protected ConfigInterface $config,
+        protected FieldFactory $fieldFactory
+    ) {
     }
 
     /**
-     * Sanitizes the entire settings array.
+     * Sanitizes the settings array by merging new input with existing options.
      *
      * This is the main callback for the 'sanitize_callback' argument in
      * `register_setting`. It processes the raw input from the $_POST array.
      *
-     * @param mixed $input The raw input from the form submission.
-     * @return array<string, mixed> The sanitized settings array ready for saving.
+     * @param mixed $input The raw input from the form submission (from `$_POST`).
+     *
+     * @return array<string, mixed> The complete, sanitized settings array ready for saving.
      */
     public function sanitize(mixed $input): array
     {
-        if (!is_array($input)) {
-            return [];
+        // 1. Fetch all previously saved options from the database.
+        // This is the base we'll be merging the new values into.
+        $optionName = $this->config->get('optionName');
+        $oldOptions = get_option($optionName, []);
+        $oldOptions = is_array($oldOptions) ? $oldOptions : [];
+
+        // If the submitted data isn't an array, it's invalid. Return the old
+        // options to prevent data loss and show an error.
+        if (! is_array($input)) {
+            add_settings_error(
+                $this->config->get('optionGroup'),
+                'invalid_input_type',
+                'Settings data received was not in the expected format. No changes were saved.',
+                'error'
+            );
+
+            return $oldOptions;
         }
 
-        $sanitized = [];
-        $fields = $this->config['fields'] ?? [];
+        // 2. Determine which fields we need to process from this submission.
+        $fieldsToProcess = $this->getFieldsToProcess();
+        $newValues       = [];
 
-        foreach ($fields as $fieldId => $fieldConfig) {
-            // Description fields have no value and should be skipped.
-            if ('description' === $fieldConfig['type']) {
-                continue;
+        foreach ($fieldsToProcess as $fieldId => $fieldConfig) {
+            $rawValue  = $input[$fieldId] ?? null;
+            $fieldType = $fieldConfig['type'] ?? 'text';
+
+            if ('description' === $fieldType) {
+                continue; // Description-only fields are not saved.
             }
 
-            $rawValue = $input[$fieldId] ?? null;
-
             try {
-                $field = $this->fieldFactory->create($fieldConfig['type'], $fieldConfig);
+                $field        = $this->fieldFactory->create($fieldType, $fieldConfig);
                 $defaultValue = $field->getDefaultValue();
 
-                // If value is not submitted, use default.
-                if (null === $rawValue) {
-                    $sanitized[$fieldId] = $defaultValue;
-                    continue;
-                }
-
-                // Apply the field's specific sanitization method.
+                // If a value is not submitted (e.g., an unchecked checkbox),
+                // it will be null. We should process it to get its "off" state (e.g., '0' or '').
                 $sanitizedValue = $field->sanitize($rawValue);
 
-                // Apply custom validation callback if it exists.
+                // Apply custom validation if it exists.
                 if (isset($fieldConfig['validate_callback']) && is_callable($fieldConfig['validate_callback'])) {
-                    if (!call_user_func($fieldConfig['validate_callback'], $sanitizedValue)) {
-                        // If validation fails, revert to the default value.
-                        $sanitizedValue = $defaultValue;
+                    if (! call_user_func($fieldConfig['validate_callback'], $sanitizedValue)) {
+                        $sanitizedValue = $defaultValue; // Revert on validation fail.
+
+                        $errorMessageTemplate = $this->config->get(
+                            'labels.validationError',
+                            'Invalid value for %s. Reverted to default.'
+                        );
+                        $errorMessage         = sprintf($errorMessageTemplate, $fieldConfig['label'] ?? $fieldId);
+
                         add_settings_error(
-                            $this->config['optionGroup'],
+                            $this->config->get('optionGroup'),
                             'validation_error_' . $fieldId,
-                            'Invalid value provided for ' . $fieldConfig['label'] . '. Reverted to default.',
+                            $errorMessage,
                             'error'
                         );
                     }
                 }
 
-                $sanitized[$fieldId] = $sanitizedValue;
+                // Store the processed value.
+                $newValues[$fieldId] = $sanitizedValue;
             } catch (InvalidArgumentException) {
-                // This should not happen if types are validated on creation.
-                // For safety, we use the default value.
-                $sanitized[$fieldId] = $fieldConfig['default'] ?? '';
+                // Failsafe if field type is somehow invalid.
+                $newValues[$fieldId] = $fieldConfig['default'] ?? '';
             }
         }
 
-        return $sanitized;
+        // 3. Merge the newly sanitized values into the old options and return.
+        // This preserves all settings from other tabs.
+        return array_merge($oldOptions, $newValues);
+    }
+
+    /**
+     * Determines which fields should be processed in the current request.
+     *
+     * If tabs are enabled, it returns only the fields for the active tab.
+     * Otherwise, it returns all registered fields.
+     *
+     * @return array<string, mixed> An array of field configurations to process.
+     */
+    private function getFieldsToProcess(): array
+    {
+        $allFields = $this->config->get('fields', []);
+
+        // If not using tabs, process all fields.
+        if (empty($this->config->get('useTabs'))) {
+            return $allFields;
+        }
+
+        $activeTab = $this->config->get('activeTab');
+
+        if (empty($activeTab)) {
+            // Failsafe: if tabs are on but no tab is active, process nothing
+            // to be safe.
+            return [];
+        }
+
+        // Filter all fields to get only those belonging to the active tab.
+        return array_filter($allFields, function ($field) use ($activeTab) {
+            $sectionId = $field['section'] ?? null;
+            if (empty($sectionId)) {
+                return false;
+            }
+            // A field belongs to a tab via its section's 'tab' property.
+            $sectionTab = $this->config->get("sections.{$sectionId}.tab");
+
+            return $sectionTab === $activeTab;
+        });
     }
 }

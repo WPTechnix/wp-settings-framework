@@ -14,15 +14,15 @@ final class ColorField extends AbstractField
      */
     public function render(mixed $value, array $attributes): void
     {
-        $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
+        $htmlPrefix        = $this->config->get('htmlPrefix', 'wptechnix-settings');
         $defaultAttributes = ['class' => "{$htmlPrefix}-color-picker"];
-        $mergedAttributes = array_merge($defaultAttributes, $attributes);
+        $mergedAttributes  = array_merge($defaultAttributes, $attributes);
 
         printf(
             '<input type="text" id="%s" name="%s" value="%s" %s />',
-            esc_attr($this->config['id']),
-            esc_attr($this->config['name']),
-            esc_attr((string) $value),
+            esc_attr($this->config->get('id')),
+            esc_attr($this->config->get('name')),
+            esc_attr((string)$value),
             $this->buildAttributesString($mergedAttributes)
         );
     }
@@ -32,7 +32,8 @@ final class ColorField extends AbstractField
      */
     public function sanitize(mixed $value): string
     {
-        $color = sanitize_hex_color((string) $value);
+        $color = sanitize_hex_color((string)$value);
+
         return $color ?? $this->getDefaultValue();
     }
 
@@ -41,6 +42,6 @@ final class ColorField extends AbstractField
      */
     public function getDefaultValue(): string
     {
-        return $this->config['default'] ?? '#000000';
+        return $this->config->get('default', '#000000');
     }
 }

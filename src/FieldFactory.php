@@ -6,6 +6,7 @@ namespace WPTechnix\WPSettings;
 
 use InvalidArgumentException;
 use WPTechnix\WPSettings\Interfaces\FieldInterface;
+use WPTechnix\WPSettings\Interfaces\ConfigInterface;
 
 /**
  * Creates instances of field objects based on their type.
@@ -54,20 +55,21 @@ final class FieldFactory
     /**
      * Creates a field object based on its type.
      *
-     * @param string               $type   The field type identifier (e.g., 'text', 'toggle').
-     * @param array<string, mixed> $config The configuration for the field.
+     * @param string $type The field type identifier (e.g., 'text', 'toggle').
+     * @param array<string, mixed>|ConfigInterface $config The configuration for the field.
+     *
      * @return FieldInterface The instantiated field object.
      * @throws InvalidArgumentException If the requested field type is not supported.
      */
-    public function create(string $type, array $config): FieldInterface
+    public function create(string $type, array|ConfigInterface $config): FieldInterface
     {
-        if (!isset($this->fieldMap[$type])) {
+        if (! isset($this->fieldMap[$type])) {
             throw new InvalidArgumentException("Unsupported field type: {$type}");
         }
 
         $className = $this->fieldMap[$type];
 
-        return new $className($config);
+        return new $className(new Config($config));
     }
 
     /**
