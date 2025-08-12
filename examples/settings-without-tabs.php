@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use WPTechnix\WPSettings\Settings;
 
+// Please make sure you require the composer autoload.
+// require_once plugin_dir_path(__FILE__) . '/vendor/autoload.php';
+
 add_action('plugins_loaded', 'wptechnix_settings_demo_without_tabs');
 
 /**
@@ -13,9 +16,12 @@ function wptechnix_settings_demo_without_tabs(): void
 {
     // 1. Create a new Settings instance.
     $settings = new Settings(
-        'wptechnix-demo-simple',           // Unique Page Slug
-        'Settings Demo (Simple)',         // Page Title
-        'Settings Demo (Simple)'          // Menu Title
+        'wptechnix_options_simple',      // Unique option name for the database
+        'wptechnix-demo-simple',         // Unique page slug
+        [
+            'pageTitle' => 'Settings Demo (Simple)',    // Page Title
+            'menuTitle' => 'Settings Demo (Simple)'     // Menu Title
+        ]
     );
 
     // 2. Add sections to organize fields.
@@ -101,7 +107,6 @@ function wptechnix_settings_demo_without_tabs(): void
             [
                 'description' => 'A code editor with HTML syntax highlighting.',
                 'language' => 'html',
-                'attributes' => ['placeholder' => ''],
             ]
         )
         ->addField(
@@ -112,7 +117,6 @@ function wptechnix_settings_demo_without_tabs(): void
             [
                 'description' => 'A code editor with CSS syntax highlighting.',
                 'language' => 'css',
-                'attributes' => ['placeholder' => ''],
             ]
         )
         ->addField(
@@ -123,7 +127,6 @@ function wptechnix_settings_demo_without_tabs(): void
             [
                 'description' => 'A code editor with JavaScript syntax highlighting.',
                 'language' => 'javascript',
-                'attributes' => ['placeholder' => ''],
             ]
         )
         ->addField( // --- Start Conditional Logic Demo ---

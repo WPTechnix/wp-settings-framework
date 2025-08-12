@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use WPTechnix\WPSettings\Settings;
 
+// Please make sure you require the composer autoload.
+// require_once plugin_dir_path(__FILE__) . '/vendor/autoload.php';
+
 add_action('plugins_loaded', 'wptechnix_settings_demo_with_tabs');
 
 /**
@@ -13,10 +16,13 @@ function wptechnix_settings_demo_with_tabs(): void
 {
     // 1. Create a new Settings instance.
     $settings = new Settings(
-        'wptechnix-demo-tabs',      // Unique Page Slug
-        'Settings Demo (Tabs)',    // Page Title
-        'Settings Demo (Tabs)',    // Menu Title
-        ['parentSlug' => 'tools.php'] // Place this page under the "Tools" menu.
+        'wptechnix_options_tabs',        // Unique option name for the database
+        'wptechnix-demo-tabs',           // Unique page slug
+        [
+            'pageTitle'  => 'Settings Demo (Tabs)',    // Page Title
+            'menuTitle'  => 'Settings Demo (Tabs)',    // Menu Title
+            'parentSlug' => 'tools.php'                // Place this page under the "Tools" menu.
+        ]
     );
 
     // 2. Add tabs to organize the settings page.
@@ -65,7 +71,6 @@ function wptechnix_settings_demo_with_tabs(): void
             [
                 'description' => 'A code editor with HTML syntax highlighting.',
                 'language' => 'html',
-                'attributes' => ['placeholder' => ''],
             ]
         )
         ->addField(
@@ -76,7 +81,6 @@ function wptechnix_settings_demo_with_tabs(): void
             [
                 'description' => 'A code editor with CSS syntax highlighting.',
                 'language' => 'css',
-                'attributes' => ['placeholder' => ''],
             ]
         )
         ->addField(
@@ -87,7 +91,6 @@ function wptechnix_settings_demo_with_tabs(): void
             [
                 'description' => 'A code editor with JavaScript syntax highlighting.',
                 'language' => 'javascript',
-                'attributes' => ['placeholder' => ''],
             ]
         )
         ->addField(
