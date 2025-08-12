@@ -9,19 +9,42 @@ use WPTechnix\WPSettings\Interfaces\SettingsInterface;
 
 /**
  * A fluent builder for creating and managing WordPress admin settings pages.
+ *
+ * This class provides a comprehensive API to register settings pages, tabs,
+ * sections, and fields, while handling rendering, sanitization, and asset management.
+ *
+ * @phpstan-type SettingsConfig array{
+ *      optionName: string,
+ *      optionGroup: string,
+ *      pageSlug: string,
+ *      parentSlug: string,
+ *      capability: string,
+ *      pageTitle: string,
+ *      menuTitle: string,
+ *      useTabs: bool,
+ *      htmlPrefix: string,
+ *      tabs: array<string, array{title: string, icon: string}>,
+ *      sections: array<string, array{title: string, description: string, tab: string}>,
+ *      fields: array<string, array<string, mixed>>,
+ *      assetPackages: array<string, mixed>,
+ *      labels: array{
+ *          noPermission: string,
+ *          addMediaTitle: string,
+ *          selectMediaText: string,
+ *          removeMediaText: string,
+ *          validationError: string
+ *      }
+ *  }
  */
 class Settings implements SettingsInterface
 {
     /**
      * The settings configuration array.
      *
-     * @var array<string, mixed>
+     * @var array
+     * @phpstan-var SettingsConfig
      */
-    private array $config = [
-        'tabs'     => [],
-        'sections' => [],
-        'fields'   => [],
-    ];
+    private array $config;
 
     /**
      * The FieldFactory instance.
@@ -47,46 +70,58 @@ class Settings implements SettingsInterface
     /**
      * Settings constructor.
      *
-     * @param string               $pageSlug   The unique settings page slug.
-     * @param string|null          $pageTitle  Optional. The title for the settings page. Defaults to "Settings".
-     * @param string|null          $menuTitle  Optional. The title for the admin menu. Defaults to the page title.
-     * @param array<string, mixed> $options    Optional configuration overrides.
+     * @param string $optionName The name of the option to be stored in the wp_options table.
+     * @param string $pageSlug   The unique slug for the settings page URL.
+     * @param array<string, mixed> $options Optional configuration overrides. Allows customization of titles,
+     *                                      labels, and other framework behaviors. The developer using the
+     *                                      framework is responsible for passing pre-translated strings here.
      */
     public function __construct(
+        string $optionName,
         string $pageSlug,
-        ?string $pageTitle = null,
-        ?string $menuTitle = null,
         array $options = []
     ) {
+        if (empty($optionName)) {
+            throw new InvalidArgumentException('Option name cannot be empty.');
+        }
         if (empty($pageSlug)) {
             throw new InvalidArgumentException('Page slug cannot be empty.');
         }
 
-        $this->fieldFactory = new FieldFactory();
-        $this->assetManager = new AssetManager();
+        /** @phpstan-var SettingsConfig $defaults */
 
-        $finalPageTitle = $pageTitle ?? __('Settings', 'default');
-        $finalMenuTitle = $menuTitle ?? $finalPageTitle;
-
-        $this->config = array_replace_recursive(
-            [
-                'pageSlug'    => $pageSlug,
-                'pageTitle'   => $finalPageTitle,
-                'menuTitle'   => $finalMenuTitle,
-                'capability'  => 'manage_options',
-                'parentSlug'  => 'options-general.php',
-                'useTabs'     => false,
-                'optionName'  => $pageSlug . '_settings',
-                'optionGroup' => $pageSlug . '_settings_group',
-                'htmlPrefix'  => 'wptechnix-settings', // no underscore or dash in end.
-                'labels'      => [
-                    'noPermission' => __('You do not have permission to access this page.', 'default'),
-                    'selectMedia'  => __('Select Media', 'default'),
-                    'remove'       => __('Remove', 'default'),
-                ],
+        $defaults = [
+            'optionName'  => $optionName,
+            'optionGroup' => $optionName . '_group',
+            'pageSlug'    => $pageSlug,
+            'parentSlug'  => 'options-general.php',
+            'capability'  => 'manage_options',
+            'pageTitle'   => 'Settings',
+            'menuTitle'   => 'Settings',
+            'useTabs'     => false,
+            'htmlPrefix'  => 'wptechnix-settings',
+            'tabs'        => [],
+            'sections'    => [],
+            'fields'      => [],
+            'assetPackages' => [],
+            'labels'      => [
+                'noPermission'    => 'You do not have permission to access this page.',
+                'addMediaTitle'   => __('Add media', 'default'),
+                'selectMediaText' => __('Select', 'default'),
+                'removeMediaText' => __('Remove', 'default'),
+                /* translators: %s: Field label */
+                'validationError' => 'Invalid value for %s. The setting has been reverted to its default value.',
             ],
-            $options
-        );
+        ];
+
+        /** @phpstan-var SettingsConfig $finalConfig */
+        $finalConfig = array_replace_recursive($defaults, $options);
+
+        $this->config = $finalConfig;
+
+        $this->fieldFactory = new FieldFactory();
+
+        $this->assetManager = new AssetManager($this->config);
     }
 
     /**
@@ -110,9 +145,30 @@ class Settings implements SettingsInterface
     /**
      * {@inheritDoc}
      */
+    public function setCapability(string $capability): static
+    {
+        $this->config['capability'] = $capability;
+        return $this;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function setParentSlug(string $parentSlug): static
+    {
+        $this->config['parentSlug'] = $parentSlug;
+        return $this;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function addTab(string $id, string $title, string $icon = ''): static
     {
-        $this->config['tabs'][$id] = ['title' => $title, 'icon' => $icon];
+        $this->config['tabs'][$id] = [
+            'title' => $title,
+            'icon' => $icon
+        ];
         $this->config['useTabs'] = true;
         return $this;
     }
@@ -122,7 +178,11 @@ class Settings implements SettingsInterface
      */
     public function addSection(string $id, string $title, string $description = '', string $tabId = ''): static
     {
-        $this->config['sections'][$id] = ['title' => $title, 'description' => $description, 'tab' => $tabId];
+        $this->config['sections'][$id] = [
+            'title' => $title,
+            'description' => $description,
+            'tab' => $tabId
+        ];
         return $this;
     }
 
@@ -146,11 +206,12 @@ class Settings implements SettingsInterface
         $this->config['fields'][$id] = array_merge(
             [
                 'id'          => $id,
-                'name'        => $this->config['optionName'] . '[' . $id . ']',
+                'name'        => $this->getOptionName() . '[' . $id . ']',
                 'section'     => $sectionId,
                 'type'        => $type,
                 'label'       => $label,
                 'description' => '',
+                'labels'      => $this->config['labels'], // Pass labels to fields.
             ],
             $args
         );
@@ -162,7 +223,6 @@ class Settings implements SettingsInterface
      */
     public function init(): void
     {
-        $this->assetManager->setConfig($this->config);
         $this->assetManager->init();
 
         add_action('admin_menu', [$this, 'registerPage']);
@@ -172,7 +232,7 @@ class Settings implements SettingsInterface
     /**
      * Registers the settings page with the WordPress admin menu.
      *
-     * @internal
+     * @internal This method is intended for internal use by the class.
      */
     public function registerPage(): void
     {
@@ -191,7 +251,7 @@ class Settings implements SettingsInterface
     /**
      * Registers the settings, sections, and fields with the WordPress Settings API.
      *
-     * @internal
+     * @internal This method is intended for internal use by the class.
      */
     public function registerSettings(): void
     {
@@ -235,27 +295,20 @@ class Settings implements SettingsInterface
         return $this->config['optionName'];
     }
 
-
     /**
      * {@inheritDoc}
      */
     public function get(string $key, mixed $default = null): mixed
     {
-        // First, check if the options have already been fetched for this request.
-        if (!isset($this->options)) {
-            // If not, fetch from the database once and cache the result.
-            $this->options = get_option($this->getOptionName(), []);
-            if (!is_array($this->options)) {
-                $this->options = [];
-            }
+        if ($this->options === null) {
+            $optionsFromDb = get_option($this->getOptionName(), []);
+            $this->options = is_array($optionsFromDb) ? $optionsFromDb : [];
         }
 
-        // Return the value from the cached array, or the provided default.
         if (isset($this->options[$key])) {
             return $this->options[$key];
         }
 
-        // If the key is not in the options, check for a configured default for that field.
         if (isset($this->config['fields'][$key]['default'])) {
             return $this->config['fields'][$key]['default'];
         }

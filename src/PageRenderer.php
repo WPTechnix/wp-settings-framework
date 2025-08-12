@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace WPTechnix\WPSettings;
 
+use InvalidArgumentException;
+
 /**
  * Handles all HTML output for the settings page.
  *
@@ -49,8 +51,8 @@ final class PageRenderer
      */
     public function renderPage(): void
     {
-        if (!empty($this->config['capability']) && !current_user_can($this->config['capability'])) {
-            wp_die(esc_html($this->config['labels']['noPermission'] ?? 'Permission denied.'));
+        if (!current_user_can($this->config['capability'])) {
+            wp_die(esc_html($this->config['labels']['noPermission']));
         }
 
         $activeTab = $this->getActiveTab();
@@ -83,30 +85,38 @@ final class PageRenderer
     /**
      * The WordPress callback for rendering a settings field.
      *
-     * This method passes the `htmlPrefix` to the field configuration, ensuring
-     * that the rendered field's HTML has the correct CSS classes.
-     *
-     * @param array<string, mixed> $args Arguments passed from `add_settings_field`.
-     * @return void
+     * @param array{id: string} $args Arguments passed from `add_settings_field`.
+     *                                 Must contain the 'id' of the field.
      */
     public function renderField(array $args): void
     {
-        $fieldId = $args['id'] ?? '';
+
+        $fieldId     = $args['id'] ?? '';
         $fieldConfig = $this->config['fields'][$fieldId] ?? null;
 
         if (empty($fieldConfig)) {
-            return; // Safety check.
+            return;
         }
 
         $htmlPrefix = $this->config['htmlPrefix'] ?? 'wptechnix-settings';
-        $fieldConfig['htmlPrefix'] = $htmlPrefix; // Pass the prefix so that later we can use in fields.
+
+        $fieldConfig['htmlPrefix'] = $htmlPrefix;
+
+        $fieldType = $fieldConfig['type'] ?? 'text';
 
         $options = get_option($this->config['optionName'], []);
-        $value = $options[$fieldId] ?? $fieldConfig['default'] ?? null;
+        $options = is_array($options) ? $options : [];
+
+        $fieldObject = $this->fieldFactory->create($fieldType, $fieldConfig);
+
+        $value = $options[$fieldId] ?? $fieldObject->getDefaultValue();
+
+        $fieldAttributes = $fieldConfig['attributes'] ?? [];
+        if (! is_array($fieldAttributes)) {
+            $fieldAttributes = [];
+        }
 
         try {
-            $field = $this->fieldFactory->create($fieldConfig['type'], $fieldConfig);
-
             $conditionalAttr = '';
             if (!empty($fieldConfig['conditional'])) {
                 $cond = $fieldConfig['conditional'];
@@ -119,13 +129,14 @@ final class PageRenderer
             }
 
             printf('<div class="%s-field-container" %s>', esc_attr($htmlPrefix), $conditionalAttr);
-            $field->render($value, $fieldConfig['attributes'] ?? []);
 
-            if (!empty($fieldConfig['description']) && 'description' !== $fieldConfig['type']) {
+            $fieldObject->render($value, $fieldAttributes);
+
+            if (!empty($fieldConfig['description']) && 'description' !== $fieldType) {
                 echo '<p class="description">' . wp_kses_post($fieldConfig['description']) . '</p>';
             }
             echo '</div>';
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             echo '<p><strong>Error:</strong> ' . esc_html($e->getMessage()) . '</p>';
         }
     }
@@ -141,13 +152,12 @@ final class PageRenderer
         foreach ($this->config['tabs'] as $tabId => $tab) {
             $url = add_query_arg(['page' => $this->config['pageSlug'], 'tab' => $tabId]);
             $class = 'nav-tab' . ($activeTab === $tabId ? ' nav-tab-active' : '');
+            $icon = !empty($tab['icon']) ? '<span class="dashicons ' . esc_attr($tab['icon']) . '"></span>' : '';
             printf(
-                '<a href="%s" class="%s">%s %s</a>',
+                '<a href="%s" class="%s">%s%s</a>',
                 esc_url($url),
                 esc_attr($class),
-                !empty($tab['icon']) ?
-                    '<span class="dashicons ' . esc_attr($tab['icon']) . '" style="margin-right: 5px;"></span>'
-                    : '',
+                $icon,
                 esc_html($tab['title'])
             );
         }
@@ -183,16 +193,11 @@ final class PageRenderer
                 call_user_func($section['callback'], $section);
             }
 
-            if (
-                !isset($wp_settings_fields) ||
-                !isset($wp_settings_fields[$page]) ||
-                !isset($wp_settings_fields[$page][$section['id']])
-            ) {
-                continue;
+            if (isset($wp_settings_fields[$page][$section['id']])) {
+                echo '<table class="form-table" role="presentation">';
+                do_settings_fields($page, $section['id']);
+                echo '</table>';
             }
-            echo '<table class="form-table" role="presentation">';
-            do_settings_fields($page, $section['id']);
-            echo '</table>';
         }
     }
 
@@ -200,7 +205,7 @@ final class PageRenderer
     /**
      * Determines the currently active tab from the URL query string.
      *
-     * @return string The slug of the active tab, or an empty string if none.
+     * @return string The slug of the active tab, or the first available tab as a fallback.
      */
     private function getActiveTab(): string
     {

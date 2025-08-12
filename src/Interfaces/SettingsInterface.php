@@ -10,6 +10,16 @@ namespace WPTechnix\WPSettings\Interfaces;
 interface SettingsInterface
 {
     /**
+     * Set Settings Page Capability
+     */
+    public function setCapability(string $capability): static;
+
+    /**
+     * Set Parent Menu slug.
+     */
+    public function setParentSlug(string $parentSlug): static;
+
+    /**
      * Sets or overrides the main page title.
      *
      * @param string $pageTitle The new title for the settings page.

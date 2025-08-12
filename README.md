@@ -60,35 +60,43 @@ Creating a settings page is simple. In your plugin's main bootstrap file or a de
 
 ### Example Usage
 
-Here is a complete example of how to build a tabbed settings page for a fictional "My Awesome Plugin".
+Here is a complete example of how to build a tabbed settings page for a fictional "My Awesome Plugin". This example also demonstrates the correct way to handle translations.
 
 ```php
 <?php
 // In your plugin's main file or a class that runs on `plugins_loaded`.
 
-use WPTechnix\WPSettings\Settings;
-use WPTechnix\WPSettings\Contracts\SettingsInterface;
+// This line is only needed if you are outside a namespace.
+// use WPTechnix\WPSettings\Settings;
 
 add_action('plugins_loaded', function () {
 
+    // Define your text domain for translations.
+    $text_domain = 'my-awesome-plugin';
+
     // 1. Create a new Settings instance.
-    // The only required argument is a unique slug for your page.
-    $settingsManager = new Settings(
-        'my-awesome-plugin',
-        'My Awesome Plugin Settings', // Page Title
-        'Awesome Plugin'             // Menu Title
+    // The first two arguments are required: a unique option name and a unique page slug.
+    $settingsManager = new \WPTechnix\WPSettings\Settings(
+        'my_awesome_plugin_options', // Unique option name to store in DB
+        'my-awesome-plugin-settings',  // Unique page slug
+        [
+            // Provide your own translated strings to override the defaults.
+            // This allows translation tools to correctly scan your plugin.
+            'pageTitle' => __('My Awesome Plugin Settings', $text_domain),
+            'menuTitle' => __('Awesome Plugin', $text_domain),
+        ]
     );
 
     // 2. Add tabs to organize your options.
     $settingsManager
-        ->addTab('general', 'General', 'dashicons-admin-generic')
-        ->addTab('advanced', 'Advanced', 'dashicons-admin-settings');
+        ->addTab('general', __('General', $text_domain), 'dashicons-admin-generic')
+        ->addTab('advanced', __('Advanced', $text_domain), 'dashicons-admin-settings');
 
     // 3. Add sections to the tabs.
     $settingsManager
-        ->addSection('api_section', 'API Credentials', 'Settings for the external API connection.', 'general')
-        ->addSection('display_section', 'Display Options', 'Control the look and feel.', 'general')
-        ->addSection('debugging_section', 'Debugging', 'Advanced developer settings.', 'advanced');
+        ->addSection('api_section', __('API Credentials', $text_domain), __('Settings for the external API connection.', $text_domain), 'general')
+        ->addSection('display_section', __('Display Options', $text_domain), __('Control the look and feel.', $text_domain), 'general')
+        ->addSection('debugging_section', __('Debugging', $text_domain), __('Advanced developer settings.', $text_domain), 'advanced');
 
     // 4. Add fields to the sections.
     $settingsManager
@@ -96,37 +104,43 @@ add_action('plugins_loaded', function () {
             'api_key',
             'api_section',
             'text',
-            'API Key',
-            ['description' => 'Enter your public API key.']
+            __('API Key', $text_domain),
+            ['description' => __('Enter your public API key.', $text_domain)]
         )
         ->addField(
             'primary_color',
             'display_section',
             'color',
-            'Primary Color',
-            ['description' => 'Select a primary color for plugin elements.', 'default' => '#2271b1']
+            __('Primary Color', $text_domain),
+            [
+                'description' => __('Select a primary color for plugin elements.', $text_domain),
+                'default' => '#2271b1'
+            ]
         )
         ->addField(
             'brand_logo',
             'display_section',
             'media',
-            'Brand Logo',
-            ['description' => 'Upload a logo to display in the header.']
+            __('Brand Logo', $text_domain),
+            ['description' => __('Upload a logo to display in the header.', $text_domain)]
         )
         ->addField(
             'enable_debugging', // This field will control the next one
             'debugging_section',
             'toggle',
-            'Enable Debug Mode',
-            ['description' => 'When enabled, advanced logging will be active.', 'default' => false]
+            __('Enable Debug Mode', $text_domain),
+            [
+                'description' => __('When enabled, advanced logging will be active.', $text_domain),
+                'default' => false
+            ]
         )
         ->addField(
             'custom_css',
             'debugging_section',
             'code', // A code editor field
-            'Custom CSS',
+            __('Custom CSS', $text_domain),
             [
-                'description' => 'Enter custom CSS to be loaded on the front-end.',
+                'description' => __('Enter custom CSS to be loaded on the front-end.', $text_domain),
                 'language'    => 'css', // Specify syntax highlighting mode
                 'conditional' => [
                     'field'    => 'enable_debugging', // The ID of the controlling field
@@ -142,12 +156,15 @@ add_action('plugins_loaded', function () {
 
 
     // You can now use this $settingsManager object to retrieve values.
-    // In a DI container setup, you would bind the SettingsInterface to this instance.
+    // In a DI container setup, you would bind it to the SettingsInterface.
     // For this example, we'll just show how to use the object directly.
 
     function my_plugin_get_color()
     {
-        global $settingsManager; // Example of accessing the object
+        // This is a simplified example. In a real application, avoid using globals.
+        // You would typically pass the $settingsManager object to where it's needed
+        // or retrieve it from a service container.
+        global $settingsManager;
         return $settingsManager->get('primary_color', '#2271b1');
     }
 });
@@ -185,7 +202,7 @@ $settingsManager->addField(
     'license_key',
     'general_section',
     'text',
-    'License Key',
+    __('License Key', 'my-text-domain'),
     [
         'conditional' => [
             'field'    => 'license_type', // The ID of the field to check
@@ -198,13 +215,12 @@ $settingsManager->addField(
 
 ### Customizing the HTML Prefix
 
-By default, all custom CSS classes are prefixed with `wptechnix-settings-` (e.g., `.wptechnix-settings-toggle`). You can provide your own prefix if you want.
+By default, all custom CSS classes are prefixed with `wptechnix-settings-`. You can provide your own prefix in the constructor's options array.
 
 ```php
-$settingsManager = new Settings(
-    'my-plugin-slug',
-    'My Plugin',
-    null,
+$settingsManager = new \WPTechnix\WPSettings\Settings(
+    'my_plugin_options',
+    'my-plugin-settings',
     [
         'htmlPrefix' => 'myplugin' // Classes will now be prefixed with `myplugin-`
     ]

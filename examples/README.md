@@ -13,12 +13,12 @@ The foundation of the framework is the `\WPTechnix\WPSettings\Settings` class. Y
 The constructor creates your settings page object.
 
 ```php
-new Settings(string $pageSlug, ?string $pageTitle = null, ?string $menuTitle = null, array $options = [])```
+new Settings(string $optionName, string $pageSlug, array $options = [])
+```
 
+*   `$optionName` (string, **required**): A unique name for the option where all settings will be stored in the `wp_options` table (e.g., `my_plugin_options`).
 *   `$pageSlug` (string, **required**): A unique slug for your settings page (e.g., `my-plugin-settings`). This is used in the URL.
-*   `$pageTitle` (string|null, optional): The main `<h1>` title displayed at the top of your settings page. If omitted, it defaults to "Settings".
-*   `$menuTitle` (string|null, optional): The text displayed in the WordPress admin menu. If omitted, it defaults to the `$pageTitle`.
-*   `$options` (array, optional): An associative array to override default page settings.
+*   `$options` (array, optional): An associative array to override default page settings. This is the **recommended** way to set page titles, menu titles, and other configurations, especially for translation.
 
 #### Constructor Options (`$options` array)
 
@@ -26,9 +26,12 @@ You can pass the following keys in the `$options` array:
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
+| `pageTitle` | string | `'Settings'` | The main `<h1>` title displayed at the top of your settings page. |
+| `menuTitle` | string | `'Settings'` | The text displayed in the WordPress admin menu. |
 | `parentSlug` | string | `'options-general.php'` | The slug of the parent menu to attach this page to (e.g., `'edit.php?post_type=page'`, `'tools.php'`). |
 | `capability`| string | `'manage_options'` | The WordPress capability required for a user to view this page. |
 | `htmlPrefix` | string | `'wptechnix-settings'` | A prefix for all custom HTML classes to prevent CSS/JS conflicts. |
+| `labels` | array | `[...]` | An array of framework-generated strings you can override for translation. |
 
 ### Basic Structure
 
@@ -39,13 +42,20 @@ Every settings page follows this basic pattern:
 use WPTechnix\WPSettings\Settings;
 
 // 1. Instantiate the Settings manager
-$settingsManager = new Settings('my-plugin-slug', 'My Plugin Settings');
+$settingsManager = new Settings(
+    'my_plugin_options',
+    'my-plugin-settings',
+    [
+        'pageTitle' => __('My Plugin Settings', 'my-text-domain'),
+        'menuTitle' => __('My Plugin', 'my-text-domain'),
+    ]
+);
 
 // 2. Add at least one Section
-$settingsManager->addSection('main_section', 'Main Settings');
+$settingsManager->addSection('main_section', __('Main Settings', 'my-text-domain'));
 
 // 3. Add Fields to your section
-$settingsManager->addField('api_key', 'main_section', 'text', 'API Key');
+$settingsManager->addField('api_key', 'main_section', 'text', __('API Key', 'my-text-domain'));
 
 // 4. Initialize the page to hook it into WordPress
 $settingsManager->init();

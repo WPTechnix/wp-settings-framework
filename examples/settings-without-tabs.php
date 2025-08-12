@@ -36,41 +36,68 @@ function wptechnix_settings_demo_without_tabs(): void
     $settings
         // --- Fields for the "Basic Inputs" Section ---
         ->addField(
-            'demo_text', 'basic_fields_section', 'text', 'Text Field',
+            'demo_text',
+            'basic_fields_section',
+            'text',
+            'Text Field',
             ['description' => 'A standard single-line text input.', 'attributes' => ['placeholder' => 'Enter some text...']]
         )
         ->addField(
-            'demo_textarea', 'basic_fields_section', 'textarea', 'Textarea Field',
+            'demo_textarea',
+            'basic_fields_section',
+            'textarea',
+            'Textarea Field',
             ['description' => 'A multi-line text input area.', 'attributes' => ['rows' => 4]]
         )
         ->addField(
-            'demo_toggle', 'basic_fields_section', 'toggle', 'Toggle Switch',
+            'demo_toggle',
+            'basic_fields_section',
+            'toggle',
+            'Toggle Switch',
             ['description' => 'A modern on/off toggle switch.', 'default' => true]
         )
         ->addField(
-            'demo_select', 'basic_fields_section', 'select', 'Select Dropdown',
+            'demo_select',
+            'basic_fields_section',
+            'select',
+            'Select Dropdown',
             ['options' => ['option_1' => 'Option One', 'option_2' => 'Option Two', 'option_3' => 'Option Three']]
         )
         ->addField(
-            'demo_radio', 'basic_fields_section', 'radio', 'Radio Buttons',
+            'demo_radio',
+            'basic_fields_section',
+            'radio',
+            'Radio Buttons',
             ['options' => ['yes' => 'Yes', 'no' => 'No', 'maybe' => 'Maybe'], 'default' => 'yes']
         )
         ->addField(
-            'demo_color', 'basic_fields_section', 'color', 'Color Picker',
+            'demo_color',
+            'basic_fields_section',
+            'color',
+            'Color Picker',
             ['description' => 'A field for selecting a hex color value.', 'default' => '#52ACCC']
         )
         ->addField(
-            'demo_date', 'basic_fields_section', 'date', 'Date Picker',
+            'demo_date',
+            'basic_fields_section',
+            'date',
+            'Date Picker',
             ['description' => 'A field for selecting a calendar date.']
         )
 
         // --- Fields for the "Advanced & Conditional" Section ---
         ->addField(
-            'demo_media', 'advanced_fields_section', 'media', 'Media Uploader',
+            'demo_media',
+            'advanced_fields_section',
+            'media',
+            'Media Uploader',
             ['description' => 'Upload an image or file using the WordPress Media Library.']
         )
         ->addField(
-            'demo_code_html', 'advanced_fields_section', 'code', 'Code Editor (HTML)',
+            'demo_code_html',
+            'advanced_fields_section',
+            'code',
+            'Code Editor (HTML)',
             [
                 'description' => 'A code editor with HTML syntax highlighting.',
                 'language' => 'html',
@@ -78,7 +105,10 @@ function wptechnix_settings_demo_without_tabs(): void
             ]
         )
         ->addField(
-            'demo_code_css', 'advanced_fields_section', 'code', 'Code Editor (CSS)',
+            'demo_code_css',
+            'advanced_fields_section',
+            'code',
+            'Code Editor (CSS)',
             [
                 'description' => 'A code editor with CSS syntax highlighting.',
                 'language' => 'css',
@@ -86,7 +116,10 @@ function wptechnix_settings_demo_without_tabs(): void
             ]
         )
         ->addField(
-            'demo_code_js', 'advanced_fields_section', 'code', 'Code Editor (JS)',
+            'demo_code_js',
+            'advanced_fields_section',
+            'code',
+            'Code Editor (JS)',
             [
                 'description' => 'A code editor with JavaScript syntax highlighting.',
                 'language' => 'javascript',

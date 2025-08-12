@@ -58,7 +58,10 @@ function wptechnix_settings_demo_with_tabs(): void
     $settings
         ->addField('demo_media', 'advanced_inputs', 'media', 'Media Uploader')
         ->addField(
-            'demo_code_html', 'advanced_inputs', 'code', 'Code Editor (HTML)',
+            'demo_code_html',
+            'advanced_inputs',
+            'code',
+            'Code Editor (HTML)',
             [
                 'description' => 'A code editor with HTML syntax highlighting.',
                 'language' => 'html',
@@ -66,7 +69,10 @@ function wptechnix_settings_demo_with_tabs(): void
             ]
         )
         ->addField(
-            'demo_code_css', 'advanced_inputs', 'code', 'Code Editor (CSS)',
+            'demo_code_css',
+            'advanced_inputs',
+            'code',
+            'Code Editor (CSS)',
             [
                 'description' => 'A code editor with CSS syntax highlighting.',
                 'language' => 'css',
@@ -74,7 +80,10 @@ function wptechnix_settings_demo_with_tabs(): void
             ]
         )
         ->addField(
-            'demo_code_js', 'advanced_inputs', 'code', 'Code Editor (JS)',
+            'demo_code_js',
+            'advanced_inputs',
+            'code',
+            'Code Editor (JS)',
             [
                 'description' => 'A code editor with JavaScript syntax highlighting.',
                 'language' => 'javascript',
@@ -82,7 +91,10 @@ function wptechnix_settings_demo_with_tabs(): void
             ]
         )
         ->addField(
-            'demo_description', 'advanced_inputs', 'description', 'Description Field',
+            'demo_description',
+            'advanced_inputs',
+            'description',
+            'Description Field',
             ['description' => 'This is a read-only field used to display important information. It supports <strong>HTML</strong>.']
         )
 

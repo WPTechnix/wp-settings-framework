@@ -8,10 +8,6 @@ use InvalidArgumentException;
 
 /**
  * Sanitizes the settings array before it is saved to the database.
- *
- * This class ensures that all data conforms to the expected format and is
- * safe for storage. It iterates through all registered fields and applies
- * the appropriate sanitization logic.
  */
 final class Sanitizer
 {
@@ -47,12 +43,18 @@ final class Sanitizer
      * This is the main callback for the 'sanitize_callback' argument in
      * `register_setting`. It processes the raw input from the $_POST array.
      *
-     * @param mixed $input The raw input from the form submission.
+     * @param mixed $input The raw input from the form submission. Expects an array.
      * @return array<string, mixed> The sanitized settings array ready for saving.
      */
     public function sanitize(mixed $input): array
     {
         if (!is_array($input)) {
+            add_settings_error(
+                $this->config['optionGroup'],
+                'invalid_input_type',
+                'Settings data received was not in the expected format.',
+                'error'
+            );
             return [];
         }
 
@@ -60,18 +62,19 @@ final class Sanitizer
         $fields = $this->config['fields'] ?? [];
 
         foreach ($fields as $fieldId => $fieldConfig) {
-            // Description fields have no value and should be skipped.
-            if ('description' === $fieldConfig['type']) {
+            $rawValue = $input[$fieldId] ?? null;
+
+            $fieldType = $fieldConfig['type'] ?? 'text';
+
+            if ('description' === $fieldType) {
                 continue;
             }
 
-            $rawValue = $input[$fieldId] ?? null;
-
             try {
-                $field = $this->fieldFactory->create($fieldConfig['type'], $fieldConfig);
+                $field = $this->fieldFactory->create($fieldType, $fieldConfig);
                 $defaultValue = $field->getDefaultValue();
 
-                // If value is not submitted, use default.
+                // If value is not submitted (e.g., unchecked checkbox), use default.
                 if (null === $rawValue) {
                     $sanitized[$fieldId] = $defaultValue;
                     continue;
@@ -83,12 +86,17 @@ final class Sanitizer
                 // Apply custom validation callback if it exists.
                 if (isset($fieldConfig['validate_callback']) && is_callable($fieldConfig['validate_callback'])) {
                     if (!call_user_func($fieldConfig['validate_callback'], $sanitizedValue)) {
-                        // If validation fails, revert to the default value.
-                        $sanitizedValue = $defaultValue;
+                        $sanitizedValue = $defaultValue; // Revert on validation fail.
+
+                        // Use the configurable label for the error message.
+                        $errorMessageTemplate = $this->config['labels']['validationError'] ??
+                                    'Invalid value for %s. The setting has been reverted to its default value.';
+                        $errorMessage = sprintf($errorMessageTemplate, $fieldConfig['label'] ?? '');
+
                         add_settings_error(
                             $this->config['optionGroup'],
                             'validation_error_' . $fieldId,
-                            'Invalid value provided for ' . $fieldConfig['label'] . '. Reverted to default.',
+                            $errorMessage,
                             'error'
                         );
                     }
@@ -96,8 +104,7 @@ final class Sanitizer
 
                 $sanitized[$fieldId] = $sanitizedValue;
             } catch (InvalidArgumentException) {
-                // This should not happen if types are validated on creation.
-                // For safety, we use the default value.
+                // This should not happen if types are validated on creation, but as a safeguard:
                 $sanitized[$fieldId] = $fieldConfig['default'] ?? '';
             }
         }
