@@ -7,7 +7,7 @@
     "settings",
     "options"
   ],
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": "WPTechnix <developers@wptechnix.com>",
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
